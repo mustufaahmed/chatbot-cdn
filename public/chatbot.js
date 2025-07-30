@@ -196,11 +196,13 @@
   document.body.appendChild(popup);
 
   // Popup toggle
-  let isOpen = false;
-  floatBtn.addEventListener("click", () => {
-  isOpen = !isOpen;
-  popup.style.display = isOpen ? "block" : "none";
-});
+   let isOpen = false;
+   floatBtn.innerHTML = "💬"; // Initial icon
+   floatBtn.addEventListener("click", () => {
+     isOpen = !isOpen;
+     popup.style.display = isOpen ? "block" : "none";
+     floatBtn.innerHTML = isOpen ? "✖" : "💬";
+   });
 
   // Tabs
   const tabHome = document.getElementById("tab-home");
