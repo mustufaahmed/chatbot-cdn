@@ -1,152 +1,178 @@
-(function () {
-  console.log("✅ Fancy Chatbot loaded!");
 
-  // Add styles
+  (function () {
+  console.log("✅ Tidio-style chatbot loading...");
+
   const style = document.createElement("style");
   style.innerHTML = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
 
-    #chat-float-btn {
+    #chatbot-float-btn {
       position: fixed;
       bottom: 24px;
       right: 24px;
-      width: 60px;
-      height: 60px;
-      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      width: 56px;
+      height: 56px;
+      background-color: #1a1aff;
       color: white;
       border: none;
       border-radius: 50%;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
       font-size: 26px;
-      cursor: pointer;
-      z-index: 9999;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      z-index: 9999;
     }
 
-    #chat-float-btn:hover {
-      transform: scale(1.1);
-      box-shadow: 0 12px 24px rgba(0,0,0,0.35);
-    }
-
-    #chat-popup {
+    #chatbot-popup {
       font-family: 'Inter', sans-serif;
       position: fixed;
-      bottom: 100px;
+      bottom: 90px;
       right: 24px;
       width: 360px;
       max-width: 90%;
-      height: 520px;
       background-color: #fff;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-      display: none;
-      flex-direction: column;
+      border-radius: 18px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.2);
       overflow: hidden;
       z-index: 9999;
-      animation: slideIn 0.3s ease;
+      display: none;
+      animation: slideUp 0.3s ease;
     }
 
-    @keyframes slideIn {
-      from { transform: translateY(30px); opacity: 0; }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
 
-    #chat-header {
-      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    .chat-header {
+      background-color: #1a1aff;
       color: white;
-      padding: 16px;
-      font-weight: 600;
+      padding: 20px;
+      text-align: left;
       font-size: 16px;
+      font-weight: 600;
+      position: relative;
+    }
+
+    .chat-header::after {
+      content: "⋮";
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .chat-header span {
+      display: block;
+      font-size: 20px;
+      margin-top: 4px;
+    }
+
+    .chat-message {
+      padding: 16px;
+      background-color: white;
+      font-size: 14px;
+    }
+
+    .chat-prompt {
+      background: #f6f8ff;
+      padding: 16px;
+      border-radius: 12px;
+      margin: 0 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
     }
 
-    #chat-close {
+    .chat-prompt span {
+      font-size: 14px;
+      color: #333;
+    }
+
+    .chat-prompt i {
+      font-size: 18px;
+      color: #1a1aff;
+    }
+
+    .chat-footer {
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0;
+      border-top: 1px solid #eee;
+      font-size: 14px;
+    }
+
+    .chat-footer div {
+      text-align: center;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .chat-footer div.active {
+      color: #1a1aff;
+      font-weight: 600;
+    }
+
+    .chat-powered {
+      text-align: center;
+      font-size: 10px;
+      color: #ccc;
+      padding: 4px;
+      background: #f9f9f9;
+    }
+
+    .chat-close-btn {
+      position: absolute;
+      top: 10px;
+      right: 14px;
       background: transparent;
       border: none;
       color: white;
-      font-size: 18px;
+      font-size: 20px;
       cursor: pointer;
-    }
-
-    #chat-body {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-
-    #chat-email {
-      padding: 12px;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      margin-bottom: 16px;
-    }
-
-    #start-chat-btn {
-      padding: 12px;
-      background: linear-gradient(135deg, #4e54c8, #8f94fb);
-      color: white;
-      font-size: 14px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-
-    #start-chat-btn:hover {
-      background: linear-gradient(135deg, #3b3fbb, #7d82fa);
     }
   `;
   document.head.appendChild(style);
 
-  // Create floating button
+  // Floating button
   const floatBtn = document.createElement("button");
-  floatBtn.id = "chat-float-btn";
-  floatBtn.title = "Chat with us";
-  floatBtn.innerHTML = "💬";
+  floatBtn.id = "chatbot-float-btn";
+  floatBtn.innerHTML = "✖";
   document.body.appendChild(floatBtn);
 
-  // Create chat popup
+  // Chat popup
   const popup = document.createElement("div");
-  popup.id = "chat-popup";
+  popup.id = "chatbot-popup";
   popup.innerHTML = `
-    <div id="chat-header">
-      <span>💬 Live Chat</span>
-      <button id="chat-close" title="Close">✖</button>
+    <div class="chat-header">
+      👋 Hi there
+      <span>Welcome to our website. Ask us anything 🎉</span>
     </div>
-    <div id="chat-body">
-      <input type="email" id="chat-email" placeholder="Enter your email" />
-      <button id="start-chat-btn">Start Chat</button>
+    <div class="chat-message">
+      <div class="chat-prompt">
+        <span>Chat with us<br><small style="color:gray;">We reply immediately</small></span>
+        <i>➤</i>
+      </div>
     </div>
+    <div class="chat-footer">
+      <div class="active">🏠 Home</div>
+      <div>💬 Chat</div>
+    </div>
+    <div class="chat-powered">Powered by YOU</div>
   `;
   document.body.appendChild(popup);
 
-  // Toggle popup on button click
+  // Toggle
+  let isOpen = false;
   floatBtn.addEventListener("click", () => {
-    popup.style.display = "flex";
-  });
-
-  // Close popup
-  document.getElementById("chat-close").addEventListener("click", () => {
-    popup.style.display = "none";
-  });
-
-  // Start chat logic
-  document.addEventListener("click", (e) => {
-    if (e.target && e.target.id === "start-chat-btn") {
-      const email = document.getElementById("chat-email").value.trim();
-      if (!email || !email.includes("@")) {
-        alert("Please enter a valid email address.");
-        return;
-      }
-      alert("Chat started! (Placeholder)");
-      console.log("📨 Email:", email);
-    }
-  });
+  isOpen = !isOpen;
+  popup.style.display = isOpen ? "block" : "none";
+});
 })();
+
