@@ -1,7 +1,4 @@
-
-  (function () {
-  console.log("✅ Tidio-style chatbot with tabs loading...");
-
+ (function () {
   const style = document.createElement("style");
   style.innerHTML = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -52,7 +49,6 @@
       padding: 20px;
       font-size: 18px;
       font-weight: 600;
-      position: relative;
     }
 
     .chat-header span {
@@ -65,6 +61,8 @@
     .chat-body {
       padding: 16px;
       min-height: 240px;
+      max-height: 300px;
+      overflow-y: auto;
     }
 
     .chat-section {
@@ -122,10 +120,42 @@
       border-radius: 12px;
       max-width: 75%;
     }
+
+    .chat-message-user {
+      background: #1a1aff;
+      color: white;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .chat-input-box {
+      display: flex;
+      border-top: 1px solid #eee;
+      padding: 8px;
+    }
+
+    .chat-input-box input {
+      flex: 1;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .chat-input-box button {
+      background: #1a1aff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-left: 8px;
+      cursor: pointer;
+    }
   `;
   document.head.appendChild(style);
 
-  // Floating Button
+  // Button
   const floatBtn = document.createElement("button");
   floatBtn.id = "chatbot-float-btn";
   floatBtn.innerHTML = "✖";
@@ -147,9 +177,15 @@
         </div>
       </div>
       <div id="chat-tab" class="chat-section">
-        <div class="chat-message-bubble">Hi! How can I help you today? 😊</div>
-        <div class="chat-message-bubble">We're available 24/7!</div>
+        <div id="chat-messages">
+          <div class="chat-message-bubble">Hi! How can I help you today? 😊</div>
+          <div class="chat-message-bubble">We're available 24/7!</div>
+        </div>
       </div>
+    </div>
+    <div class="chat-input-box" id="chat-input-area" style="display: none;">
+      <input type="text" id="user-message" placeholder="Type your message..." />
+      <button id="send-btn">Send</button>
     </div>
     <div class="chat-footer">
       <div id="tab-home" class="active">🏠 Home</div>
@@ -159,24 +195,26 @@
   `;
   document.body.appendChild(popup);
 
-  // Toggle Popup
+  // Popup toggle
   let isOpen = false;
   floatBtn.addEventListener("click", () => {
   isOpen = !isOpen;
   popup.style.display = isOpen ? "block" : "none";
 });
 
-  // Tab Switching
+  // Tabs
   const tabHome = document.getElementById("tab-home");
   const tabChat = document.getElementById("tab-chat");
   const sectionHome = document.getElementById("home-tab");
   const sectionChat = document.getElementById("chat-tab");
+  const inputArea = document.getElementById("chat-input-area");
 
   tabHome.addEventListener("click", () => {
   tabHome.classList.add("active");
   tabChat.classList.remove("active");
   sectionHome.classList.add("active");
   sectionChat.classList.remove("active");
+  inputArea.style.display = "none";
 });
 
   tabChat.addEventListener("click", () => {
@@ -184,6 +222,23 @@
   tabHome.classList.remove("active");
   sectionChat.classList.add("active");
   sectionHome.classList.remove("active");
+  inputArea.style.display = "flex";
+});
+
+  // Send message
+  const sendBtn = document.getElementById("send-btn");
+  const messageInput = document.getElementById("user-message");
+  const messageContainer = document.getElementById("chat-messages");
+
+  sendBtn.addEventListener("click", () => {
+  const msg = messageInput.value.trim();
+  if (msg !== "") {
+  const bubble = document.createElement("div");
+  bubble.className = "chat-message-bubble chat-message-user";
+  bubble.innerText = msg;
+  messageContainer.appendChild(bubble);
+  messageInput.value = "";
+  messageContainer.scrollTop = messageContainer.scrollHeight;
+}
 });
 })();
-
