@@ -143,7 +143,7 @@
   // Floating button
   const floatBtn = document.createElement("button");
   floatBtn.id = "chatbot-float-btn";
-  floatBtn.innerHTML = "✖";
+  floatBtn.innerHTML = "💬";
   document.body.appendChild(floatBtn);
 
   // Chat popup
