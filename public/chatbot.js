@@ -1,6 +1,6 @@
 
   (function () {
-  console.log("✅ Tidio-style chatbot loading...");
+  console.log("✅ Tidio-style chatbot with tabs loading...");
 
   const style = document.createElement("style");
   style.innerHTML = `
@@ -50,54 +50,42 @@
       background-color: #1a1aff;
       color: white;
       padding: 20px;
-      text-align: left;
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 600;
       position: relative;
     }
 
-    .chat-header::after {
-      content: "⋮";
-      position: absolute;
-      right: 16px;
-      top: 16px;
-      font-size: 20px;
-      cursor: pointer;
-    }
-
     .chat-header span {
       display: block;
-      font-size: 20px;
+      font-size: 14px;
+      font-weight: 400;
       margin-top: 4px;
     }
 
-    .chat-message {
+    .chat-body {
       padding: 16px;
-      background-color: white;
-      font-size: 14px;
+      min-height: 240px;
+    }
+
+    .chat-section {
+      display: none;
+    }
+
+    .chat-section.active {
+      display: block;
     }
 
     .chat-prompt {
       background: #f6f8ff;
       padding: 16px;
       border-radius: 12px;
-      margin: 0 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-weight: 500;
       cursor: pointer;
       box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-    }
-
-    .chat-prompt span {
-      font-size: 14px;
-      color: #333;
-    }
-
-    .chat-prompt i {
-      font-size: 18px;
-      color: #1a1aff;
+      margin-bottom: 10px;
     }
 
     .chat-footer {
@@ -127,26 +115,23 @@
       background: #f9f9f9;
     }
 
-    .chat-close-btn {
-      position: absolute;
-      top: 10px;
-      right: 14px;
-      background: transparent;
-      border: none;
-      color: white;
-      font-size: 20px;
-      cursor: pointer;
+    .chat-message-bubble {
+      background: #eef0ff;
+      padding: 10px 14px;
+      margin: 6px 0;
+      border-radius: 12px;
+      max-width: 75%;
     }
   `;
   document.head.appendChild(style);
 
-  // Floating button
+  // Floating Button
   const floatBtn = document.createElement("button");
   floatBtn.id = "chatbot-float-btn";
-  floatBtn.innerHTML = "💬";
+  floatBtn.innerHTML = "✖";
   document.body.appendChild(floatBtn);
 
-  // Chat popup
+  // Popup
   const popup = document.createElement("div");
   popup.id = "chatbot-popup";
   popup.innerHTML = `
@@ -154,25 +139,51 @@
       👋 Hi there
       <span>Welcome to our website. Ask us anything 🎉</span>
     </div>
-    <div class="chat-message">
-      <div class="chat-prompt">
-        <span>Chat with us<br><small style="color:gray;">We reply immediately</small></span>
-        <i>➤</i>
+    <div class="chat-body">
+      <div id="home-tab" class="chat-section active">
+        <div class="chat-prompt">
+          <span>Chat with us<br><small style="color:gray;">We reply immediately</small></span>
+          <i style="color:#1a1aff;">➤</i>
+        </div>
+      </div>
+      <div id="chat-tab" class="chat-section">
+        <div class="chat-message-bubble">Hi! How can I help you today? 😊</div>
+        <div class="chat-message-bubble">We're available 24/7!</div>
       </div>
     </div>
     <div class="chat-footer">
-      <div class="active">🏠 Home</div>
-      <div>💬 Chat</div>
+      <div id="tab-home" class="active">🏠 Home</div>
+      <div id="tab-chat">💬 Chat</div>
     </div>
     <div class="chat-powered">Powered by YOU</div>
   `;
   document.body.appendChild(popup);
 
-  // Toggle
+  // Toggle Popup
   let isOpen = false;
   floatBtn.addEventListener("click", () => {
   isOpen = !isOpen;
   popup.style.display = isOpen ? "block" : "none";
+});
+
+  // Tab Switching
+  const tabHome = document.getElementById("tab-home");
+  const tabChat = document.getElementById("tab-chat");
+  const sectionHome = document.getElementById("home-tab");
+  const sectionChat = document.getElementById("chat-tab");
+
+  tabHome.addEventListener("click", () => {
+  tabHome.classList.add("active");
+  tabChat.classList.remove("active");
+  sectionHome.classList.add("active");
+  sectionChat.classList.remove("active");
+});
+
+  tabChat.addEventListener("click", () => {
+  tabChat.classList.add("active");
+  tabHome.classList.remove("active");
+  sectionChat.classList.add("active");
+  sectionHome.classList.remove("active");
 });
 })();
 
