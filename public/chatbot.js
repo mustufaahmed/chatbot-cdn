@@ -1,39 +1,68 @@
- (function () {
-   function generateChatId() {
-     const saved = sessionStorage.getItem("chat_id");
-     if (saved) return saved;
+(function () {
+    function generateChatId() {
+        const saved = sessionStorage.getItem("chat_id");
+        if (saved) return saved;
 
-     const timestamp = Date.now();
-     const hash = btoa(navigator.userAgent).slice(0, 6); // short obfuscation
-     const chatId = `${timestamp}${hash}`;
-     sessionStorage.setItem("chat_id", chatId);
-     return chatId;
-   }
+        const timestamp = Date.now();
+        const hash = btoa(navigator.userAgent).slice(0, 6);
+        const chatId = `${timestamp}${hash}`;
+        sessionStorage.setItem("chat_id", chatId);
+        return chatId;
+    }
 
-   const chatId = generateChatId();
-   const SOCKET_URL = `ws://127.0.0.1:8001/ws/user/chat${chatId}`;
-   let socket;
+    const chatId = generateChatId();
 
-   function connectSocket() {
-     socket = new WebSocket(SOCKET_URL);
+    const SOCKET_URL = `ws://127.0.0.1:8001/ws/user/chat${chatId}`;
+    let socket;
 
-     socket.onopen = () => console.log("🔗 WebSocket connected");
+    function connectSocket() {
+        socket = new WebSocket(SOCKET_URL);
 
-     socket.onmessage = event => {
-       const data = event.data;
-       const bubble = document.createElement("div");
-       bubble.className = "chat-message-bubble";
-       bubble.innerText = data;
-       messageContainer.appendChild(bubble);
-       messageContainer.scrollTop = messageContainer.scrollHeight;
-     };
+        socket.onopen = () => console.log("🔗 WebSocket connected");
 
-     socket.onclose = () => console.warn("🔌 Socket closed");
-     socket.onerror = err => console.error("❌ WebSocket error", err);
-   }
+        socket.onmessage = (event) => {
+            const bubble = document.createElement("div");
+            bubble.className = "chat-message-bubble";
+            bubble.innerText = event.data;
+            messageContainer.appendChild(bubble);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        };
 
-  const style = document.createElement("style");
-  style.innerHTML = `
+        socket.onerror = (err) => console.warn("❌ WebSocket error", err);
+        socket.onclose = () => console.warn("🔌 WebSocket closed");
+    }
+
+    function fetchChatHistory() {
+        fetch(`http://127.0.0.1:8001/api/chat-history/${chatId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    data.forEach(item => {
+                        const bubble = document.createElement("div");
+                        bubble.className = "chat-message-bubble";
+                        if (item.sender === 'Client') {
+                            bubble.classList.add("chat-message-user");
+                        }
+                        bubble.innerText = item.message;
+                        messageContainer.appendChild(bubble);
+                    });
+                } else {
+                    appendBotMessage("Hello 😊");
+                }
+            })
+            .catch(() => appendBotMessage("Hello 😊"));
+    }
+
+    function appendBotMessage(text) {
+        const bubble = document.createElement("div");
+        bubble.className = "chat-message-bubble";
+        bubble.innerText = text;
+        messageContainer.appendChild(bubble);
+    }
+
+
+    const style = document.createElement("style");
+    style.innerHTML = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
 
     #chatbot-float-btn {
@@ -186,18 +215,18 @@
       cursor: pointer;
     }
   `;
-  document.head.appendChild(style);
+    document.head.appendChild(style);
 
-  // Button
-  const floatBtn = document.createElement("button");
-  floatBtn.id = "chatbot-float-btn";
-  floatBtn.innerHTML = "✖";
-  document.body.appendChild(floatBtn);
+    // Button
+    const floatBtn = document.createElement("button");
+    floatBtn.id = "chatbot-float-btn";
+    floatBtn.innerHTML = "✖";
+    document.body.appendChild(floatBtn);
 
-  // Popup
-  const popup = document.createElement("div");
-  popup.id = "chatbot-popup";
-  popup.innerHTML = `
+    // Popup
+    const popup = document.createElement("div");
+    popup.id = "chatbot-popup";
+    popup.innerHTML = `
     <div class="chat-header">
       👋 Hi there
       <span>Welcome to our website. Ask us anything 🎉</span>
@@ -225,61 +254,88 @@
     </div>
     <div class="chat-powered">Powered by YOU</div>
   `;
-  document.body.appendChild(popup);
+    document.body.appendChild(popup);
 
-  // Popup toggle
-   let isOpen = false;
-   floatBtn.innerHTML = "💬"; // Initial icon
-   floatBtn.addEventListener("click", () => {
-     isOpen = !isOpen;
-     popup.style.display = isOpen ? "block" : "none";
-     floatBtn.innerHTML = isOpen ? "✖" : "💬";
+    // Popup toggle
+    let isOpen = false;
+    floatBtn.innerHTML = "💬"; // Initial icon
+    floatBtn.addEventListener("click", () => {
+        isOpen = !isOpen;
+        popup.style.display = isOpen ? "block" : "none";
+        floatBtn.innerHTML = isOpen ? "✖" : "💬";
 
-     if (isOpen && (!socket || socket.readyState !== 1)) {
-       connectSocket(); // connect on open
-     }
-   });
+        // if (isOpen && (!socket || socket.readyState !== 1)) {
+        //     connectSocket(); // connect on open
+        // }
+        if (isOpen) {
+            if (!socket || socket.readyState !== 1) connectSocket();
+            fetchChatHistory();
+        }
+    });
 
-  // Tabs
-  const tabHome = document.getElementById("tab-home");
-  const tabChat = document.getElementById("tab-chat");
-  const sectionHome = document.getElementById("home-tab");
-  const sectionChat = document.getElementById("chat-tab");
-  const inputArea = document.getElementById("chat-input-area");
+    // Tabs
+    const tabHome = document.getElementById("tab-home");
+    const tabChat = document.getElementById("tab-chat");
+    const sectionHome = document.getElementById("home-tab");
+    const sectionChat = document.getElementById("chat-tab");
+    const inputArea = document.getElementById("chat-input-area");
 
-  tabHome.addEventListener("click", () => {
-  tabHome.classList.add("active");
-  tabChat.classList.remove("active");
-  sectionHome.classList.add("active");
-  sectionChat.classList.remove("active");
-  inputArea.style.display = "none";
-});
+    tabHome.addEventListener("click", () => {
+        tabHome.classList.add("active");
+        tabChat.classList.remove("active");
+        sectionHome.classList.add("active");
+        sectionChat.classList.remove("active");
+        inputArea.style.display = "none";
+    });
 
-  tabChat.addEventListener("click", () => {
-  tabChat.classList.add("active");
-  tabHome.classList.remove("active");
-  sectionChat.classList.add("active");
-  sectionHome.classList.remove("active");
-  inputArea.style.display = "flex";
-});
+    tabChat.addEventListener("click", () => {
+        tabChat.classList.add("active");
+        tabHome.classList.remove("active");
+        sectionChat.classList.add("active");
+        sectionHome.classList.remove("active");
+        inputArea.style.display = "flex";
+    });
 
-  // Send message
-  const sendBtn = document.getElementById("send-btn");
-  const messageInput = document.getElementById("user-message");
-  const messageContainer = document.getElementById("chat-messages");
+    // Send message
+    const sendBtn = document.getElementById("send-btn");
+    const messageInput = document.getElementById("user-message");
+    const messageContainer = document.getElementById("chat-messages");
 
-  sendBtn.addEventListener("click", () => {
-  const msg = messageInput.value.trim();
-  if (msg !== "") {
-  const bubble = document.createElement("div");
-  bubble.className = "chat-message-bubble chat-message-user";
-  bubble.innerText = msg;
-  messageContainer.appendChild(bubble);
-  messageInput.value = "";
-  messageContainer.scrollTop = messageContainer.scrollHeight;
+    // sendBtn.addEventListener("click", () => {
+    //     const msg = messageInput.value.trim();
+    //     if (msg !== "") {
+    //         const bubble = document.createElement("div");
+    //         bubble.className = "chat-message-bubble chat-message-user";
+    //         bubble.innerText = msg;
+    //         messageContainer.appendChild(bubble);
+    //         messageInput.value = "";
+    //         messageContainer.scrollTop = messageContainer.scrollHeight;
+    //
+    //         // Send over socket
+    //         socket.send(msg);
+    //     }
+    // });
 
-    // Send over socket
-    socket.send(msg);
-}
-});
+    sendBtn.addEventListener("click", handleSend);
+    messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handleSend(e);
+    });
+
+    function handleSend(e) {
+        e.preventDefault();
+        const msg = messageInput.value.trim();
+        if (!msg) return;
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-message-bubble chat-message-user";
+        bubble.innerText = msg;
+        messageContainer.appendChild(bubble);
+        messageInput.value = "";
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(msg);
+        }
+    }
+
 })();
