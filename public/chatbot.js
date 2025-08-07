@@ -1,4 +1,37 @@
  (function () {
+   function generateChatId() {
+     const saved = sessionStorage.getItem("chat_id");
+     if (saved) return saved;
+
+     const timestamp = Date.now();
+     const hash = btoa(navigator.userAgent).slice(0, 6); // short obfuscation
+     const chatId = `${timestamp}${hash}`;
+     sessionStorage.setItem("chat_id", chatId);
+     return chatId;
+   }
+
+   const chatId = generateChatId();
+   const SOCKET_URL = `ws://127.0.0.1:8001/ws/user/chat${chatId}`;
+   let socket;
+
+   function connectSocket() {
+     socket = new WebSocket(SOCKET_URL);
+
+     socket.onopen = () => console.log("🔗 WebSocket connected");
+
+     socket.onmessage = event => {
+       const data = event.data;
+       const bubble = document.createElement("div");
+       bubble.className = "chat-message-bubble";
+       bubble.innerText = data;
+       messageContainer.appendChild(bubble);
+       messageContainer.scrollTop = messageContainer.scrollHeight;
+     };
+
+     socket.onclose = () => console.warn("🔌 Socket closed");
+     socket.onerror = err => console.error("❌ WebSocket error", err);
+   }
+
   const style = document.createElement("style");
   style.innerHTML = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -202,6 +235,10 @@
      isOpen = !isOpen;
      popup.style.display = isOpen ? "block" : "none";
      floatBtn.innerHTML = isOpen ? "✖" : "💬";
+
+     if (isOpen && (!socket || socket.readyState !== 1)) {
+       connectSocket(); // connect on open
+     }
    });
 
   // Tabs
@@ -241,6 +278,9 @@
   messageContainer.appendChild(bubble);
   messageInput.value = "";
   messageContainer.scrollTop = messageContainer.scrollHeight;
+
+    // Send over socket
+    socket.send(msg);
 }
 });
 })();
