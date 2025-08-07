@@ -12,7 +12,7 @@
 
     const chatId = generateChatId();
 
-    const SOCKET_URL = `ws://127.0.0.1:8001/ws/user/chat${chatId}`;
+    const SOCKET_URL = `ws://198.199.75.170:8000/ws/user/chat${chatId}`;
     let socket;
 
     function connectSocket() {
@@ -33,7 +33,7 @@
     }
 
     function fetchChatHistory() {
-        fetch(`http://127.0.0.1:8001/api/chat-history/${chatId}`)
+        fetch(`http://198.199.75.170:8000/api/chat-history/${chatId}`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
