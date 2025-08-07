@@ -46,9 +46,10 @@
                         bubble.innerText = item.message;
                         messageContainer.appendChild(bubble);
                     });
-                } else {
-                    appendBotMessage("Hello 😊");
                 }
+                // else {
+                //     appendBotMessage("Hello 😊");
+                // }
             })
             .catch(() => appendBotMessage("Hello 😊"));
     }
