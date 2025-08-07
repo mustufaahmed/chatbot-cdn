@@ -211,8 +211,7 @@
       </div>
       <div id="chat-tab" class="chat-section">
         <div id="chat-messages">
-          <div class="chat-message-bubble">Hi! How can I help you today? 😊</div>
-          <div class="chat-message-bubble">We're available 24/7!</div>
+          <div class="chat-message-bubble">Hello! How can I help you today? 😊</div>
         </div>
       </div>
     </div>
