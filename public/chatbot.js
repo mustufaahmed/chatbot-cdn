@@ -12,7 +12,7 @@
 
     const chatId = generateChatId();
 
-    const SOCKET_URL = `ws://dotzerotech.net:8000/ws/user/chat${chatId}`;
+    const SOCKET_URL = `ws://dotzerotech.net/api/python/ws/user/chat${chatId}`;
     let socket;
 
     function connectSocket() {
@@ -33,7 +33,7 @@
     }
 
     function fetchChatHistory() {
-        fetch(`http://dotzerotech.net:8000/api/chat-history/${chatId}`)
+        fetch(`https://dotzerotech.net/api/python/chat-history/${chatId}`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
