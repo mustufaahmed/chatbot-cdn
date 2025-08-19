@@ -13,7 +13,7 @@
     const chatId = generateChatId();
 
     // const SOCKET_URL = `wss://dotzerotech.net/api/python/ws/user/chat${chatId}`;
-    const SOCKET_URL = `wss://dotzerotech.net/ws/chat`;
+    const SOCKET_URL = `wss://dotzerotech.net/api/ws/chat`;
     let socket;
 
     function connectSocket() {
