@@ -240,11 +240,11 @@
           <i style="color:#1a1aff;">➤</i>
         </div>
       </div>
-      <div id="chat-tab" class="chat-section">
-        <div id="chat-messages">
-          <div class="chat-message-bubble">Hello! How can I help you today? 😊</div>
-        </div>
-      </div>
+<!--      <div id="chat-tab" class="chat-section">-->
+<!--        <div id="chat-messages">-->
+<!--          <div class="chat-message-bubble">Hello! How can I help you today? 😊</div>-->
+<!--        </div>-->
+<!--      </div>-->
     </div>
     <div class="chat-input-box" id="chat-input-area" style="display: none;">
       <input type="text" id="user-message" placeholder="Type your message..." />
