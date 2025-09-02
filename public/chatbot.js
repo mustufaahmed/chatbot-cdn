@@ -22,12 +22,14 @@
         socket.onopen = () => console.log("🔗 WebSocket connected");
 
         socket.onmessage = (event) => {
-            console.log("Event ",event);
-            const bubble = document.createElement("div");
-            bubble.className = "chat-message-bubble";
-            bubble.innerText = event.data;
-            messageContainer.appendChild(bubble);
-            messageContainer.scrollTop = messageContainer.scrollHeight;
+            const data = JSON.parse(event.data);
+            if (data.type === "chat"){
+                const bubble = document.createElement("div");
+                bubble.className = "chat-message-bubble";
+                bubble.innerText = data.message;
+                messageContainer.appendChild(bubble);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
         };
 
         socket.onerror = (err) => console.warn("❌ WebSocket error", err);
