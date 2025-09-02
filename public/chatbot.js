@@ -22,6 +22,7 @@
         socket.onopen = () => console.log("🔗 WebSocket connected");
 
         socket.onmessage = (event) => {
+            console.log("Event ",event);
             const bubble = document.createElement("div");
             bubble.className = "chat-message-bubble";
             bubble.innerText = event.data;
