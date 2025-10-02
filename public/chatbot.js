@@ -295,12 +295,7 @@
         floatBtn.innerHTML = isOpen ? "✖" : "💬";
 
         if (isOpen) {
-            const valid = await validateChatbot();
-            if (!valid) {
-                console.warn("❌ Chatbot not authorized for this domain");
-                appendBotMessage("This chatbot is not authorized for this website.");
-                return;
-            }
+            // ✅ Directly connect socket
             if (!socket || socket.readyState !== 1) connectSocket();
             fetchChatHistory();
         }
