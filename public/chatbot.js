@@ -48,7 +48,8 @@
     }
 
     function connectSocket() {
-        socket = new WebSocket(SOCKET_URL);
+        const url = `${SOCKET_URL}?token=${SECRET_KEY}&domain=${DOMAIN}&chatId=${chatId}`;
+        socket = new WebSocket(url);
 
         socket.onopen = () => console.log("🔗 WebSocket connected");
 
