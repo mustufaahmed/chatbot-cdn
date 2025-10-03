@@ -9,6 +9,7 @@
     const SECRET_KEY = getSecretKey();
 
     // 🔹 Step 2: Get current domain
+    const URL = window.location.origin;
     const DOMAIN = window.location.hostname;
 
     // 🔹 Generate Chat ID
@@ -25,13 +26,13 @@
     const chatId = generateChatId();
 
     // 🔹 WebSocket URL
-    const SOCKET_URL = `wss://dotzerotech.net/api/ws/chat`;
+    const SOCKET_URL = `wss://${DOMAIN}/api/ws/chat`;
     let socket;
 
     // 🔹 Validate secret key + domain with backend
     async function validateChatbot() {
         try {
-            const res = await fetch("https://dotzerotech.net/api/validate-widget", {
+            const res = await fetch(`${URL}/api/validate-widget`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -72,7 +73,7 @@
     }
 
     function fetchChatHistory() {
-        fetch(`https://dotzerotech.net/api/python/chat-history/chat${chatId}`)
+        fetch(`${URL}/api/python/chat-history/chat${chatId}`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
