@@ -29,25 +29,6 @@
     const SOCKET_URL = `wss://${DOMAIN}/api/ws/chat`;
     let socket;
 
-    // 🔹 Validate secret key + domain with backend
-    async function validateChatbot() {
-        try {
-            const res = await fetch(`${URL}/api/validate-widget`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    secret_key: SECRET_KEY,
-                    domain: DOMAIN
-                })
-            });
-            const data = await res.json();
-            return data?.valid === true;
-        } catch (err) {
-            console.error("❌ Validation failed:", err);
-            return false;
-        }
-    }
-
     function connectSocket() {
         const url = `${SOCKET_URL}?token=${SECRET_KEY}&domain=${DOMAIN}&chatId=${chatId}`;
         socket = new WebSocket(url);
