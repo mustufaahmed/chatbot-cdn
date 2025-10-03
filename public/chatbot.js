@@ -301,7 +301,7 @@
         if (isOpen) {
             // ✅ Directly connect socket
             if (!socket || socket.readyState !== 1) connectSocket();
-            fetchChatHistory();
+            // fetchChatHistory();
         }
     });
 
