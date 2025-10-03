@@ -65,7 +65,10 @@
         };
 
         socket.onerror = (err) => console.warn("❌ WebSocket error", err);
-        socket.onclose = () => console.warn("🔌 WebSocket closed");
+        socket.onclose = () => {
+            console.warn("Socket closed, reconnecting...");
+            setTimeout(() => connectSocket(), 1000); // reconnect after 1s
+        };
     }
 
     function fetchChatHistory() {
