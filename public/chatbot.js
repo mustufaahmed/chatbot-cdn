@@ -26,7 +26,7 @@
     const chatId = generateChatId();
 
     // 🔹 WebSocket URL
-    const SOCKET_URL = `wss://${DOMAIN}/api/ws/chat`;
+    const SOCKET_URL = `wss://dotzerotech.net/api/ws/chat`;
     let socket;
 
     function connectSocket() {
