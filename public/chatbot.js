@@ -55,7 +55,7 @@
     }
 
     function fetchChatHistory() {
-        fetch(`${URL}/api/chabot/chat-history/${chatId}`)
+        fetch(`${URL}/api/chatbot/chat-history/${chatId}`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
