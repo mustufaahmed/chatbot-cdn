@@ -10,6 +10,7 @@
 
     // 🔹 Step 2: Get current domain
     const URL = window.location.origin;
+    const API_URL = 'https://dotzerotech.net';
     const DOMAIN = window.location.hostname;
 
     // 🔹 Generate Chat ID
@@ -55,7 +56,7 @@
     }
 
     function fetchChatHistory() {
-        fetch(`${URL}/api/chatbot/chat-history/${chatId}`)
+        fetch(`${API_URL}/api/chatbot/chat-history/${chatId}`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
