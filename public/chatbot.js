@@ -213,6 +213,8 @@
       max-width: 75%;
       word-wrap: break-word;
       margin: 10px 0px;
+      text-align:left !important;
+      font-size:16px !important;
     }
 
     .chat-message-user {
@@ -220,6 +222,8 @@
       color: white;
       align-self: flex-end;
       margin-left: auto;
+      text-align:left !important;
+      font-size:16px !important;
     }
 
     .chat-input-box {
