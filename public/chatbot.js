@@ -8,8 +8,6 @@
     }
     const SECRET_KEY = getSecretKey();
 
-    // 🔹 Step 2: Get current domain
-    const URL = window.location.origin;
     const API_URL = 'https://dotzerotech.net';
     const DOMAIN = window.location.hostname;
 
@@ -38,20 +36,13 @@
 
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.type === "chat"){
-                const bubble = document.createElement("div");
-                bubble.className = "chat-message-bubble";
-                bubble.innerText = data.message;
-                messageContainer.appendChild(bubble);
-                messageContainer.scrollTop = messageContainer.scrollHeight;
+            if (data.type === "chat") {
+                hideTyping(); // 👈 Hide typing indicator before showing message
+                appendBotMessage(data.message);
             }
         };
 
         socket.onerror = (err) => console.warn("❌ WebSocket error", err);
-        // socket.onclose = () => {
-        //     console.warn("Socket closed, reconnecting...");
-        //     setTimeout(() => connectSocket(), 1000); // reconnect after 1s
-        // };
         socket.onclose = () => console.warn("🔌 WebSocket closed");
     }
 
@@ -69,6 +60,7 @@
                         bubble.innerText = item.message;
                         messageContainer.appendChild(bubble);
                     });
+                    autoScroll();
                 }
             })
             .catch((error) => console.error("Something went wrong:", error));
@@ -79,6 +71,28 @@
         bubble.className = "chat-message-bubble";
         bubble.innerText = text;
         messageContainer.appendChild(bubble);
+        autoScroll();
+    }
+
+    function autoScroll() {
+        setTimeout(() => {
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }, 100);
+    }
+
+    // 🔹 Typing Indicator
+    function showTyping() {
+        hideTyping(); // prevent duplicates
+        const typingDiv = document.createElement("div");
+        typingDiv.className = "typing-indicator";
+        typingDiv.innerHTML = `<span></span><span></span><span></span>`;
+        messageContainer.appendChild(typingDiv);
+        autoScroll();
+    }
+
+    function hideTyping() {
+        const existing = document.querySelector(".typing-indicator");
+        if (existing) existing.remove();
     }
 
     // 🔹 Styles
@@ -148,60 +162,13 @@
       overflow-y: auto;
     }
 
-    .chat-section {
-      display: none;
-    }
-
-    .chat-section.active {
-      display: block;
-    }
-
-    .chat-prompt {
-      background: #f6f8ff;
-      padding: 16px;
-      border-radius: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-      margin-bottom: 10px;
-    }
-
-    .chat-footer {
-      display: flex;
-      justify-content: space-around;
-      padding: 12px 0;
-      border-top: 1px solid #eee;
-      font-size: 14px;
-    }
-
-    .chat-footer div {
-      text-align: center;
-      cursor: pointer;
-      color: #999;
-    }
-
-    .chat-footer div.active {
-      color: #1a1aff;
-      font-weight: 600;
-    }
-
-    .chat-powered {
-      text-align: center;
-      font-size: 10px;
-      color: #ccc;
-      padding: 4px;
-      background: #f9f9f9;
-    }
-
     .chat-message-bubble {
       background: #eef0ff;
       padding: 10px 14px;
       margin: 6px 0;
       border-radius: 12px;
       max-width: 75%;
+      word-wrap: break-word;
     }
 
     .chat-message-user {
@@ -235,13 +202,38 @@
       margin-left: 8px;
       cursor: pointer;
     }
+
+    /* Typing Indicator */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+      gap: 4px;
+    }
+    .typing-indicator span {
+      width: 8px;
+      height: 8px;
+      background-color: #ccc;
+      border-radius: 50%;
+      animation: blink 1.4s infinite both;
+    }
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1); }
+    }
   `;
     document.head.appendChild(style);
 
-    // 🔹 UI Elements (same as your version)
+    // 🔹 UI
     const floatBtn = document.createElement("button");
     floatBtn.id = "chatbot-float-btn";
-    floatBtn.innerHTML = "✖";
+    floatBtn.innerHTML = "💬";
     document.body.appendChild(floatBtn);
 
     const popup = document.createElement("div");
@@ -251,70 +243,36 @@
         <span>Welcome to our website. Ask us anything 🎉</span>
       </div>
       <div class="chat-body">
-        <div id="home-tab" class="chat-section active">
-          <div class="chat-prompt">
-            <span>Chat with us<br><small style="color:gray;">We reply immediately</small></span>
-            <i style="color:#1a1aff;">➤</i>
-          </div>
-        </div>
-        <div id="chat-tab" class="chat-section">
+        <div id="chat-tab">
           <div id="chat-messages"></div>
         </div>
       </div>
-      <div class="chat-input-box" id="chat-input-area" style="display: none;">
+      <div class="chat-input-box">
         <input type="text" id="user-message" placeholder="Type your message..." />
         <button id="send-btn">Send</button>
-      </div>
-      <div class="chat-footer">
-        <div id="tab-home" class="active">🏠 Home</div>
-        <div id="tab-chat">💬 Chat</div>
       </div>
       <div class="chat-powered">Powered by YOU</div>
     `;
     document.body.appendChild(popup);
 
-    // 🔹 Tab Handling
+    // 🔹 Message system
+    const messageContainer = popup.querySelector("#chat-messages");
+    const messageInput = popup.querySelector("#user-message");
+    const sendBtn = popup.querySelector("#send-btn");
+
+    // Toggle chat window
     let isOpen = false;
-    floatBtn.innerHTML = "💬";
-    floatBtn.addEventListener("click", async () => {
+    floatBtn.addEventListener("click", () => {
         isOpen = !isOpen;
         popup.style.display = isOpen ? "block" : "none";
         floatBtn.innerHTML = isOpen ? "✖" : "💬";
-
         if (isOpen) {
-            // ✅ Directly connect socket
             if (!socket || socket.readyState !== 1) connectSocket();
             fetchChatHistory();
         }
     });
 
-    const tabHome = document.getElementById("tab-home");
-    const tabChat = document.getElementById("tab-chat");
-    const sectionHome = document.getElementById("home-tab");
-    const sectionChat = document.getElementById("chat-tab");
-    const inputArea = document.getElementById("chat-input-area");
-
-    tabHome.addEventListener("click", () => {
-        tabHome.classList.add("active");
-        tabChat.classList.remove("active");
-        sectionHome.classList.add("active");
-        sectionChat.classList.remove("active");
-        inputArea.style.display = "none";
-    });
-
-    tabChat.addEventListener("click", () => {
-        tabChat.classList.add("active");
-        tabHome.classList.remove("active");
-        sectionChat.classList.add("active");
-        sectionHome.classList.remove("active");
-        inputArea.style.display = "flex";
-    });
-
-    // 🔹 Send Message
-    const sendBtn = document.getElementById("send-btn");
-    const messageInput = document.getElementById("user-message");
-    const messageContainer = document.getElementById("chat-messages");
-
+    // Send message
     function handleSend(e) {
         e.preventDefault();
         const msg = messageInput.value.trim();
@@ -325,10 +283,11 @@
         bubble.innerText = msg;
         messageContainer.appendChild(bubble);
         messageInput.value = "";
-        messageContainer.scrollTop = messageContainer.scrollHeight;
+        autoScroll();
 
         if (socket && socket.readyState === WebSocket.OPEN) {
             socket.send(msg);
+            showTyping(); // 👈 Show typing dots while waiting
         }
     }
 
