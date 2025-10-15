@@ -251,7 +251,7 @@
         <input type="text" id="user-message" placeholder="Type your message..." />
         <button id="send-btn">Send</button>
       </div>
-      <div class="chat-powered">Powered by YOU</div>
+    
     `;
     document.body.appendChild(popup);
 
