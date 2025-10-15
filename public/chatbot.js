@@ -3,13 +3,13 @@
     function getSecretKey() {
         const scripts = document.getElementsByTagName("script");
         const current = Array.from(scripts).find(s => s.src.includes("chatbot.js"));
-        const urlParams = new URLSearchParams(current.src.split("?")[1]);
+        if (!current) return null;
+        const qs = current.src.split("?")[1] || "";
+        const urlParams = new URLSearchParams(qs);
         return urlParams.get("key");
     }
     const SECRET_KEY = getSecretKey();
 
-    // 🔹 Step 2: Get current domain
-    const URL = window.location.origin;
     const API_URL = 'https://dotzerotech.net';
     const DOMAIN = window.location.hostname;
 
@@ -17,7 +17,6 @@
     function generateChatId() {
         const saved = sessionStorage.getItem("chat_id");
         if (saved) return saved;
-
         const timestamp = Date.now();
         const hash = btoa(navigator.userAgent).slice(0, 6);
         const chatId = `${timestamp}${hash}`;
@@ -31,16 +30,39 @@
     let socket;
 
     function connectSocket() {
+        if (!SECRET_KEY) {
+            console.warn("No SECRET_KEY found for websocket.");
+            return;
+        }
         const url = `${SOCKET_URL}?token=${SECRET_KEY}&domain=${DOMAIN}&chatId=${chatId}`;
         socket = new WebSocket(url);
 
         socket.onopen = () => console.log("🔗 WebSocket connected");
 
         socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === "chat") {
-                appendBotMessage(data.message);
-                autoScroll();
+            try {
+                const data = JSON.parse(event.data);
+                // If server sends explicit typing events, handle them:
+                if (data.type === "typing") {
+                    if (data.status === "start") showTyping();
+                    else hideTyping();
+                    return;
+                }
+
+                if (data.type === "chat") {
+                    hideTyping(); // hide typing when real message arrives
+                    appendBotMessage(data.message);
+                } else {
+                    // fallback: treat message as chat text
+                    if (data.message) {
+                        hideTyping();
+                        appendBotMessage(data.message);
+                    }
+                }
+            } catch (err) {
+                // if not JSON, just append raw text
+                hideTyping();
+                appendBotMessage(event.data);
             }
         };
 
@@ -48,13 +70,14 @@
         socket.onclose = () => console.warn("🔌 WebSocket closed");
     }
 
-    // 🔹 Auto Scroll Function
+    // 🔹 Auto Scroll Function (target the actual scroll container)
     function autoScroll() {
         const chatBody = document.querySelector(".chat-body");
         if (chatBody) {
+            // small delay to let DOM render new msg
             setTimeout(() => {
                 chatBody.scrollTop = chatBody.scrollHeight;
-            }, 100);
+            }, 60);
         }
     }
 
@@ -66,9 +89,7 @@
                     data.forEach(item => {
                         const bubble = document.createElement("div");
                         bubble.className = "chat-message-bubble";
-                        if (item.sender === 'Client') {
-                            bubble.classList.add("chat-message-user");
-                        }
+                        if (item.sender === 'Client') bubble.classList.add("chat-message-user");
                         bubble.innerText = item.message;
                         messageContainer.appendChild(bubble);
                     });
@@ -84,6 +105,32 @@
         bubble.innerText = text;
         messageContainer.appendChild(bubble);
         autoScroll();
+    }
+
+    // 🔹 Typing Indicator (create / remove)
+    function createTypingElement() {
+        const wrap = document.createElement("div");
+        wrap.className = "typing-indicator";
+        wrap.setAttribute("data-typing", "1");
+        wrap.innerHTML = `
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        `;
+        return wrap;
+    }
+
+    function showTyping() {
+        // prevent duplicate
+        if (messageContainer.querySelector(".typing-indicator")) return;
+        const el = createTypingElement();
+        messageContainer.appendChild(el);
+        autoScroll();
+    }
+
+    function hideTyping() {
+        const ex = messageContainer.querySelector(".typing-indicator");
+        if (ex) ex.remove();
     }
 
     // 🔹 Styles
@@ -137,6 +184,8 @@
       padding: 20px;
       font-size: 18px;
       font-weight: 600;
+      border-top-left-radius: 18px;
+      border-top-right-radius: 18px;
     }
 
     .chat-header span {
@@ -147,28 +196,22 @@
     }
 
     .chat-body {
-      padding: 16px;
+      padding: 12px 16px;
       min-height: 240px;
-      max-height: 300px;
+      max-height: 320px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-    }
-
-    .chat-section {
-      display: none;
-    }
-
-    .chat-section.active {
-      display: block;
+      gap: 6px;
+      background: #fff;
     }
 
     .chat-message-bubble {
       background: #eef0ff;
       padding: 10px 14px;
-      margin: 6px 0;
       border-radius: 12px;
       max-width: 75%;
+      word-wrap: break-word;
     }
 
     .chat-message-user {
@@ -182,6 +225,7 @@
       display: flex;
       border-top: 1px solid #eee;
       padding: 8px;
+      gap: 8px;
     }
 
     .chat-input-box input {
@@ -199,35 +243,43 @@
       border: none;
       border-radius: 8px;
       padding: 10px 14px;
-      margin-left: 8px;
       cursor: pointer;
-    }
-
-    .chat-footer {
-      display: flex;
-      justify-content: space-around;
-      padding: 12px 0;
-      border-top: 1px solid #eee;
-      font-size: 14px;
-    }
-
-    .chat-footer div {
-      text-align: center;
-      cursor: pointer;
-      color: #999;
-    }
-
-    .chat-footer div.active {
-      color: #1a1aff;
-      font-weight: 600;
     }
 
     .chat-powered {
       text-align: center;
       font-size: 10px;
-      color: #ccc;
-      padding: 4px;
-      background: #f9f9f9;
+      color: #666;
+      padding: 6px 8px;
+      background: #fafafa;
+    }
+
+    /* Typing indicator style */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 12px;
+      background: #eef0ff;
+      max-width: 35%;
+    }
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background: #999;
+      border-radius: 50%;
+      animation: typing-bounce 1.2s infinite;
+      opacity: 0.6;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes typing-bounce {
+      0% { transform: translateY(0); opacity: 0.6; }
+      30% { transform: translateY(-6px); opacity: 1; }
+      60% { transform: translateY(0); opacity: 0.6; }
+      100% { transform: translateY(0); opacity: 0.6; }
     }
   `;
     document.head.appendChild(style);
@@ -247,21 +299,25 @@
       <div class="chat-body">
         <div id="chat-messages"></div>
       </div>
-      <div class="chat-input-box" id="chat-input-area">
+      <div class="chat-input-box">
         <input type="text" id="user-message" placeholder="Type your message..." />
         <button id="send-btn">Send</button>
       </div>
-    
+      <div class="chat-powered">Powered by YOU</div>
     `;
     document.body.appendChild(popup);
 
-    // 🔹 Floating button click
+    // 🔹 Message system
+    const messageContainer = popup.querySelector("#chat-messages");
+    const messageInput = popup.querySelector("#user-message");
+    const sendBtn = popup.querySelector("#send-btn");
+
+    // Toggle chat window
     let isOpen = false;
-    floatBtn.addEventListener("click", async () => {
+    floatBtn.addEventListener("click", () => {
         isOpen = !isOpen;
         popup.style.display = isOpen ? "block" : "none";
         floatBtn.innerHTML = isOpen ? "✖" : "💬";
-
         if (isOpen) {
             if (!socket || socket.readyState !== 1) connectSocket();
             fetchChatHistory();
@@ -269,16 +325,13 @@
         }
     });
 
-    // 🔹 Send Message
-    const sendBtn = document.getElementById("send-btn");
-    const messageInput = document.getElementById("user-message");
-    const messageContainer = document.getElementById("chat-messages");
-
+    // Send message
     function handleSend(e) {
-        e.preventDefault();
+        e?.preventDefault();
         const msg = messageInput.value.trim();
         if (!msg) return;
 
+        // Append user bubble
         const bubble = document.createElement("div");
         bubble.className = "chat-message-bubble chat-message-user";
         bubble.innerText = msg;
@@ -286,8 +339,25 @@
         messageInput.value = "";
         autoScroll();
 
+        // Show typing indicator while waiting for reply
+        showTyping();
+
+        // Send via websocket if available
         if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(msg);
+            // sending a JSON helps server know it's client text
+            try {
+                socket.send(JSON.stringify({ type: "chat", message: msg }));
+            } catch (err) {
+                // fallback: send raw
+                socket.send(msg);
+            }
+        } else {
+            // If socket not connected, optionally call API fallback
+            // simulate a bot reply after 1.5s for UX (remove if server handles)
+            setTimeout(() => {
+                hideTyping();
+                appendBotMessage("Sorry, I'm currently offline. We'll respond shortly.");
+            }, 1500);
         }
     }
 
