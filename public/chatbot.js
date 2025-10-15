@@ -260,7 +260,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 10px 10px;
+      padding: 15px 10px;
       border-radius: 12px;
       background: #eef0ff;
       max-width: 20%;
