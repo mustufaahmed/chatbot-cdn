@@ -8,6 +8,8 @@
     }
     const SECRET_KEY = getSecretKey();
 
+    // 🔹 Step 2: Get current domain
+    const URL = window.location.origin;
     const API_URL = 'https://dotzerotech.net';
     const DOMAIN = window.location.hostname;
 
@@ -37,13 +39,23 @@
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type === "chat") {
-                hideTyping(); // 👈 Hide typing indicator before showing message
                 appendBotMessage(data.message);
+                autoScroll();
             }
         };
 
         socket.onerror = (err) => console.warn("❌ WebSocket error", err);
         socket.onclose = () => console.warn("🔌 WebSocket closed");
+    }
+
+    // 🔹 Auto Scroll Function
+    function autoScroll() {
+        const chatBody = document.querySelector(".chat-body");
+        if (chatBody) {
+            setTimeout(() => {
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }, 100);
+        }
     }
 
     function fetchChatHistory() {
@@ -72,27 +84,6 @@
         bubble.innerText = text;
         messageContainer.appendChild(bubble);
         autoScroll();
-    }
-
-    function autoScroll() {
-        setTimeout(() => {
-            messageContainer.scrollTop = messageContainer.scrollHeight;
-        }, 100);
-    }
-
-    // 🔹 Typing Indicator
-    function showTyping() {
-        hideTyping(); // prevent duplicates
-        const typingDiv = document.createElement("div");
-        typingDiv.className = "typing-indicator";
-        typingDiv.innerHTML = `<span></span><span></span><span></span>`;
-        messageContainer.appendChild(typingDiv);
-        autoScroll();
-    }
-
-    function hideTyping() {
-        const existing = document.querySelector(".typing-indicator");
-        if (existing) existing.remove();
     }
 
     // 🔹 Styles
@@ -160,6 +151,16 @@
       min-height: 240px;
       max-height: 300px;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-section {
+      display: none;
+    }
+
+    .chat-section.active {
+      display: block;
     }
 
     .chat-message-bubble {
@@ -168,7 +169,6 @@
       margin: 6px 0;
       border-radius: 12px;
       max-width: 75%;
-      word-wrap: break-word;
     }
 
     .chat-message-user {
@@ -203,34 +203,36 @@
       cursor: pointer;
     }
 
-    /* Typing Indicator */
-    .typing-indicator {
+    .chat-footer {
       display: flex;
-      align-items: center;
-      margin: 8px 0;
-      gap: 4px;
+      justify-content: space-around;
+      padding: 12px 0;
+      border-top: 1px solid #eee;
+      font-size: 14px;
     }
-    .typing-indicator span {
-      width: 8px;
-      height: 8px;
-      background-color: #ccc;
-      border-radius: 50%;
-      animation: blink 1.4s infinite both;
+
+    .chat-footer div {
+      text-align: center;
+      cursor: pointer;
+      color: #999;
     }
-    .typing-indicator span:nth-child(2) {
-      animation-delay: 0.2s;
+
+    .chat-footer div.active {
+      color: #1a1aff;
+      font-weight: 600;
     }
-    .typing-indicator span:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-    @keyframes blink {
-      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-      40% { opacity: 1; transform: scale(1); }
+
+    .chat-powered {
+      text-align: center;
+      font-size: 10px;
+      color: #ccc;
+      padding: 4px;
+      background: #f9f9f9;
     }
   `;
     document.head.appendChild(style);
 
-    // 🔹 UI
+    // 🔹 UI Elements
     const floatBtn = document.createElement("button");
     floatBtn.id = "chatbot-float-btn";
     floatBtn.innerHTML = "💬";
@@ -243,11 +245,9 @@
         <span>Welcome to our website. Ask us anything 🎉</span>
       </div>
       <div class="chat-body">
-        <div id="chat-tab">
-          <div id="chat-messages"></div>
-        </div>
+        <div id="chat-messages"></div>
       </div>
-      <div class="chat-input-box">
+      <div class="chat-input-box" id="chat-input-area">
         <input type="text" id="user-message" placeholder="Type your message..." />
         <button id="send-btn">Send</button>
       </div>
@@ -255,24 +255,25 @@
     `;
     document.body.appendChild(popup);
 
-    // 🔹 Message system
-    const messageContainer = popup.querySelector("#chat-messages");
-    const messageInput = popup.querySelector("#user-message");
-    const sendBtn = popup.querySelector("#send-btn");
-
-    // Toggle chat window
+    // 🔹 Floating button click
     let isOpen = false;
-    floatBtn.addEventListener("click", () => {
+    floatBtn.addEventListener("click", async () => {
         isOpen = !isOpen;
         popup.style.display = isOpen ? "block" : "none";
         floatBtn.innerHTML = isOpen ? "✖" : "💬";
+
         if (isOpen) {
             if (!socket || socket.readyState !== 1) connectSocket();
             fetchChatHistory();
+            autoScroll();
         }
     });
 
-    // Send message
+    // 🔹 Send Message
+    const sendBtn = document.getElementById("send-btn");
+    const messageInput = document.getElementById("user-message");
+    const messageContainer = document.getElementById("chat-messages");
+
     function handleSend(e) {
         e.preventDefault();
         const msg = messageInput.value.trim();
@@ -287,7 +288,6 @@
 
         if (socket && socket.readyState === WebSocket.OPEN) {
             socket.send(msg);
-            showTyping(); // 👈 Show typing dots while waiting
         }
     }
 
