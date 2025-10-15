@@ -236,94 +236,104 @@
       cursor: pointer;
     }
   `;
-  document.head.appendChild(style);
+    document.head.appendChild(style);
 
-  // Button
-  const floatBtn = document.createElement("button");
-  floatBtn.id = "chatbot-float-btn";
-  floatBtn.innerHTML = "✖";
-  document.body.appendChild(floatBtn);
+    // 🔹 UI Elements (same as your version)
+    const floatBtn = document.createElement("button");
+    floatBtn.id = "chatbot-float-btn";
+    floatBtn.innerHTML = "✖";
+    document.body.appendChild(floatBtn);
 
-  // Popup
-  const popup = document.createElement("div");
-  popup.id = "chatbot-popup";
-  popup.innerHTML = `
-    <div class="chat-header">
-      👋 Hi there
-      <span>Welcome to our website. Ask us anything 🎉</span>
-    </div>
-    <div class="chat-body">
-      <div id="home-tab" class="chat-section active">
-        <div class="chat-prompt">
-          <span>Chat with us<br><small style="color:gray;">We reply immediately</small></span>
-          <i style="color:#1a1aff;">➤</i>
+    const popup = document.createElement("div");
+    popup.id = "chatbot-popup";
+    popup.innerHTML = `
+      <div class="chat-header">👋 Hi there
+        <span>Welcome to our website. Ask us anything 🎉</span>
+      </div>
+      <div class="chat-body">
+        <div id="home-tab" class="chat-section active">
+          <div class="chat-prompt">
+            <span>Chat with us<br><small style="color:gray;">We reply immediately</small></span>
+            <i style="color:#1a1aff;">➤</i>
+          </div>
+        </div>
+        <div id="chat-tab" class="chat-section">
+          <div id="chat-messages"></div>
         </div>
       </div>
-      <div id="chat-tab" class="chat-section">
-        <div id="chat-messages">
-          <div class="chat-message-bubble">Hi! How can I help you today? 😊</div>
-          <div class="chat-message-bubble">We're available 24/7!</div>
-        </div>
+      <div class="chat-input-box" id="chat-input-area" style="display: none;">
+        <input type="text" id="user-message" placeholder="Type your message..." />
+        <button id="send-btn">Send</button>
       </div>
-    </div>
-    <div class="chat-input-box" id="chat-input-area" style="display: none;">
-      <input type="text" id="user-message" placeholder="Type your message..." />
-      <button id="send-btn">Send</button>
-    </div>
-    <div class="chat-footer">
-      <div id="tab-home" class="active">🏠 Home</div>
-      <div id="tab-chat">💬 Chat</div>
-    </div>
-    <div class="chat-powered">Powered by YOU</div>
-  `;
-  document.body.appendChild(popup);
+      <div class="chat-footer">
+        <div id="tab-home" class="active">🏠 Home</div>
+        <div id="tab-chat">💬 Chat</div>
+      </div>
+      <div class="chat-powered">Powered by YOU</div>
+    `;
+    document.body.appendChild(popup);
 
-  // Popup toggle
-   let isOpen = false;
-   floatBtn.innerHTML = "💬"; // Initial icon
-   floatBtn.addEventListener("click", () => {
-     isOpen = !isOpen;
-     popup.style.display = isOpen ? "block" : "none";
-     floatBtn.innerHTML = isOpen ? "✖" : "💬";
-   });
+    // 🔹 Tab Handling
+    let isOpen = false;
+    floatBtn.innerHTML = "💬";
+    floatBtn.addEventListener("click", async () => {
+        isOpen = !isOpen;
+        popup.style.display = isOpen ? "block" : "none";
+        floatBtn.innerHTML = isOpen ? "✖" : "💬";
 
-  // Tabs
-  const tabHome = document.getElementById("tab-home");
-  const tabChat = document.getElementById("tab-chat");
-  const sectionHome = document.getElementById("home-tab");
-  const sectionChat = document.getElementById("chat-tab");
-  const inputArea = document.getElementById("chat-input-area");
+        if (isOpen) {
+            // ✅ Directly connect socket
+            if (!socket || socket.readyState !== 1) connectSocket();
+            fetchChatHistory();
+        }
+    });
 
-  tabHome.addEventListener("click", () => {
-  tabHome.classList.add("active");
-  tabChat.classList.remove("active");
-  sectionHome.classList.add("active");
-  sectionChat.classList.remove("active");
-  inputArea.style.display = "none";
-});
+    const tabHome = document.getElementById("tab-home");
+    const tabChat = document.getElementById("tab-chat");
+    const sectionHome = document.getElementById("home-tab");
+    const sectionChat = document.getElementById("chat-tab");
+    const inputArea = document.getElementById("chat-input-area");
 
-  tabChat.addEventListener("click", () => {
-  tabChat.classList.add("active");
-  tabHome.classList.remove("active");
-  sectionChat.classList.add("active");
-  sectionHome.classList.remove("active");
-  inputArea.style.display = "flex";
-});
+    tabHome.addEventListener("click", () => {
+        tabHome.classList.add("active");
+        tabChat.classList.remove("active");
+        sectionHome.classList.add("active");
+        sectionChat.classList.remove("active");
+        inputArea.style.display = "none";
+    });
 
-  // Send message
-  const sendBtn = document.getElementById("send-btn");
-  const messageInput = document.getElementById("user-message");
-  const messageContainer = document.getElementById("chat-messages");
+    tabChat.addEventListener("click", () => {
+        tabChat.classList.add("active");
+        tabHome.classList.remove("active");
+        sectionChat.classList.add("active");
+        sectionHome.classList.remove("active");
+        inputArea.style.display = "flex";
+    });
 
-  sendBtn.addEventListener("click", () => {
-  const msg = messageInput.value.trim();
-  if (msg !== "") {
-  const bubble = document.createElement("div");
-  bubble.className = "chat-message-bubble chat-message-user";
-  bubble.innerText = msg;
-  messageContainer.appendChild(bubble);
-  messageInput.value = "";
-  messageContainer.scrollTop = messageContainer.scrollHeight;
-}
-});
+    // 🔹 Send Message
+    const sendBtn = document.getElementById("send-btn");
+    const messageInput = document.getElementById("user-message");
+    const messageContainer = document.getElementById("chat-messages");
+
+    function handleSend(e) {
+        e.preventDefault();
+        const msg = messageInput.value.trim();
+        if (!msg) return;
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-message-bubble chat-message-user";
+        bubble.innerText = msg;
+        messageContainer.appendChild(bubble);
+        messageInput.value = "";
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(msg);
+        }
+    }
+
+    sendBtn.addEventListener("click", handleSend);
+    messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handleSend(e);
+    });
 })();
