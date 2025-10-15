@@ -215,6 +215,7 @@
       margin: 10px 0px;
       text-align:left !important;
       font-size:16px !important;
+      color: #6D6D6D;
     }
 
     .chat-message-user {
