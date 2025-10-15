@@ -263,6 +263,7 @@
       padding: 10px 10px;
       border-radius: 12px;
       background: #eef0ff;
+      max-width: 20%;
     }
     .typing-dot {
       width: 8px;
