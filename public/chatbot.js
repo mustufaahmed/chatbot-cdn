@@ -212,6 +212,7 @@
       border-radius: 12px;
       max-width: 75%;
       word-wrap: break-word;
+      margin: 10px 0px;
     }
 
     .chat-message-user {
