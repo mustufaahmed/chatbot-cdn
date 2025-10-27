@@ -28,13 +28,54 @@
 
         // 🔹 Generate Chat ID
         function generateChatId() {
-            const saved = sessionStorage.getItem("chat_id");
-            if (saved) return saved;
-            const timestamp = Date.now();
-            const hash = btoa(navigator.userAgent).slice(0, 6);
-            const chatId = `${timestamp}${hash}`;
-            sessionStorage.setItem("chat_id", chatId);
+            const SESSION_DURATION = 5 * 60 * 1000; // 5 minutes
+            const IDLE_TIMEOUT = 1 * 60 * 1000;     // 1 minute
+            const now = Date.now();
+
+            let chatId = sessionStorage.getItem("chat_id");
+            let lastActivity = parseInt(sessionStorage.getItem("last_activity_time")) || 0;
+            let expiryTime = parseInt(sessionStorage.getItem("session_expiry_time")) || 0;
+
+            // Helper: generate new chatId
+            const createNewSession = () => {
+                const current = Date.now();
+                const hash = btoa(navigator.userAgent).slice(0, 6);
+                const newChatId = `${current}${hash}`;
+                const newExpiry = current + SESSION_DURATION;
+
+                sessionStorage.clear();
+                sessionStorage.setItem("chat_id", newChatId);
+                sessionStorage.setItem("last_activity_time", current.toString());
+                sessionStorage.setItem("session_expiry_time", newExpiry.toString());
+
+                reconnectSocket();
+
+                return newChatId;
+            };
+
+            // 1️⃣ No existing session → create one
+            if (!chatId) return createNewSession();
+
+            // 2️⃣ Session expired
+            if (now > expiryTime) return createNewSession();
+
+            // 3️⃣ Idle timeout
+            if (now - lastActivity > IDLE_TIMEOUT) return createNewSession();
+
+            // 4️⃣ Extend active session
+            const extendedExpiry = now + SESSION_DURATION;
+            sessionStorage.setItem("last_activity_time", now.toString());
+            sessionStorage.setItem("session_expiry_time", extendedExpiry.toString());
+
             return chatId;
+        }
+        function reconnectSocket() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close(); // Gracefully close existing connection
+            }
+
+            // Just call connectSocket() again — reuse your existing logic
+            connectSocket();
         }
 
         const chatId = generateChatId();
@@ -75,7 +116,10 @@
             };
 
             socket.onerror = (err) => console.warn("❌ WebSocket error", err);
-            socket.onclose = () => console.warn("🔌 WebSocket closed");
+            socket.onclose = () => {
+                console.warn("🔌 WebSocket closed, attempting reconnect...");
+                setTimeout(connectSocket, 2000); // retry after 2 sec
+            };
         }
 
         // 🔹 Auto Scroll
