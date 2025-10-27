@@ -60,7 +60,7 @@
             if (now > expiryTime) return createNewSession();
 
             // 3️⃣ Idle timeout
-            if (now - lastActivity > IDLE_TIMEOUT) return createNewSession();
+            if ((now - lastActivity) > IDLE_TIMEOUT) return createNewSession();
 
             // 4️⃣ Extend active session
             const extendedExpiry = now + SESSION_DURATION;
