@@ -74,11 +74,13 @@
                 socket.close(); // Gracefully close existing connection
             }
 
+            document.getElementById('chat-messages').innerHTML = "";
+
             // Just call connectSocket() again — reuse your existing logic
             connectSocket();
         }
 
-        const chatId = generateChatId();
+        let chatId = generateChatId();
 
         // 🔹 WebSocket URL
         const SOCKET_URL = `wss://dotzerotech.net/api/ws/chat`;
@@ -97,6 +99,25 @@
             socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+
+                    // 🧱 Handle Token Limit Error
+                    if (data.type === "error" && data.status === 4003) {
+                        hideTyping();
+                        appendBotMessage(
+                            "⚠️ Your subscription token limit has been reached.<br>Please recharge your plan to continue chatting."
+                        );
+
+                        // Disable input box
+                        messageInput.disabled = true;
+                        messageInput.placeholder = "Recharge required";
+                        sendBtn.disabled = true;
+                        sendBtn.style.opacity = 0.6;
+
+                        // Close socket gracefully
+                        socket.close(4003, "Token limit reached");
+                        return;
+                    }
+
                     if (data.type === "typing") {
                         data.status === "start" ? showTyping() : hideTyping();
                         return;
@@ -105,10 +126,26 @@
                     if (data.type === "chat" && data.message) {
                         hideTyping();
                         appendBotMessage(data.message);
-                    } else if (data.message) {
-                        hideTyping();
-                        appendBotMessage(data.message);
+                        // 🧠 Detect lead completion message
+                        if (
+                            data.message.includes("Thank you! All your details have been received") ||
+                            data.message.toLowerCase().includes("our agent will contact you")
+                        ) {
+                            // ⏳ Run after 5 seconds (5000 ms)
+                            setTimeout(() => {
+                                // 🧹 Clear old session completely
+                                sessionStorage.clear();
+
+                                // 🔁 Generate new chat ID and reconnect socket
+                                chatId = generateChatId();
+                            }, 5000);
+                        }
                     }
+                    // else if (data.message) {
+                    //     console.log("data ",data);
+                    //     hideTyping();
+                    //     appendBotMessage(data.message);
+                    // }
                 } catch (err) {
                     hideTyping();
                     appendBotMessage(event.data);
@@ -116,8 +153,14 @@
             };
 
             socket.onerror = (err) => console.warn("❌ WebSocket error", err);
-            socket.onclose = () => {
+            socket.onclose = (event) => {
                 console.warn("🔌 WebSocket closed, attempting reconnect...");
+
+                if (event.code === 4003) {
+                    console.warn("⛔ Token limit reached — no reconnection.");
+                    return;
+                }
+
                 setTimeout(connectSocket, 2000); // retry after 2 sec
             };
         }
@@ -366,7 +409,7 @@
         <input type="text" id="user-message" placeholder="Type your message..." />
         <button id="send-btn">Send</button>
       </div>
-      <div class="chat-powered">Powered by YOU</div>
+      <div class="chat-powered">Powered by Dotzerotech.com</div>
     `;
         document.body.appendChild(popup);
 
