@@ -36,11 +36,23 @@
             let lastActivity = parseInt(sessionStorage.getItem("last_activity_time")) || 0;
             let expiryTime = parseInt(sessionStorage.getItem("session_expiry_time")) || 0;
 
+            // Helper to format date and time nicely (YYYYMMDD_HHmm)
+            const formatDateTime = (date) => {
+                const d = new Date(date);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, "0");
+                const day = String(d.getDate()).padStart(2, "0");
+                const hours = String(d.getHours()).padStart(2, "0");
+                const minutes = String(d.getMinutes()).padStart(2, "0");
+                return `${year}${month}${day}_${hours}${minutes}`;
+            };
+
             // Helper: generate new chatId
             const createNewSession = () => {
                 const current = Date.now();
+                const formattedTime = formatDateTime(current);
                 const hash = btoa(navigator.userAgent).slice(0, 6);
-                const newChatId = `${current}${hash}`;
+                const newChatId = `${formattedTime}${hash}`;
                 const newExpiry = current + SESSION_DURATION;
 
                 sessionStorage.clear();
@@ -445,6 +457,7 @@
 
             if (socket && socket.readyState === WebSocket.OPEN) {
                 try {
+                    chatId = generateChatId();
                     socket.send(JSON.stringify({type: "chat", message: msg}));
                 } catch (err) {
                     socket.send(msg);
