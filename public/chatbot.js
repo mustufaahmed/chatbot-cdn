@@ -103,7 +103,7 @@
                 console.warn("No SECRET_KEY found for websocket.");
                 return;
             }
-            const url = `${SOCKET_URL}?token=${SECRET_KEY}&domain=${DOMAIN}&chatId=${chatId}`;
+            const url = `${SOCKET_URL}?token=${SECRET_KEY}&domain=${DOMAIN}&chatId=${chatId}&type=chat`;
             socket = new WebSocket(url);
 
             socket.onopen = () => console.log("🔗 WebSocket connected");
