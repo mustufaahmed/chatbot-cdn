@@ -457,7 +457,7 @@
 
             if (socket && socket.readyState === WebSocket.OPEN) {
                 try {
-                    chatId = generateChatId();
+                    // chatId = generateChatId();
                     socket.send(JSON.stringify({type: "chat", message: msg}));
                 } catch (err) {
                     socket.send(msg);
