@@ -29,7 +29,7 @@
         // 🔹 Generate Chat ID
         function generateChatId() {
             const SESSION_DURATION = 5 * 60 * 1000; // 5 minutes
-            const IDLE_TIMEOUT = 1 * 60 * 1000;     // 1 minute
+            const IDLE_TIMEOUT = 5 * 60 * 1000;     // 5 minute
             const now = Date.now();
 
             let chatId = sessionStorage.getItem("chat_id");
@@ -457,7 +457,7 @@
 
             if (socket && socket.readyState === WebSocket.OPEN) {
                 try {
-                    // chatId = generateChatId();
+                    chatId = generateChatId();
                     socket.send(JSON.stringify({type: "chat", message: msg}));
                 } catch (err) {
                     socket.send(msg);
