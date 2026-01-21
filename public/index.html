@@ -9,6 +9,9 @@
 <p>Click the 💬 button at bottom-right to open the chatbot.</p>
 
 <!-- ✅ Load your chatbot script -->
-<script src="chatbot.js?key=mw_9dbb95a76a3f8a9d8d2b5bcb7bd55e3808fcd9e080fd76e944f8243cf33cac39"></script>
+<!-- IMPORTANT: Using LOCAL chatbot.js for testing. Change to CDN URL for production -->
+<!-- Replace YOUR_SECRET_KEY with your actual secret key from Integration page -->
+<!-- Replace www.dotzerotech.com with your actual website domain from database -->
+<script>(function(d,t){const b='http://localhost:5500/chatbot.js';const g=d.createElement(t),s=d.getElementsByTagName(t)[0];g.src=b+'?key=mw_e42adf91dd258af110f3657dae696bc7141fb52e0eac48fa007627dbc9ccd5b5&website=www.dotzerotech.com';g.defer=true;g.async=true;s.parentNode.insertBefore(g,s);})(document,'script')</script>
 </body>
 </html>
