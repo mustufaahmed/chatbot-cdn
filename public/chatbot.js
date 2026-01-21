@@ -5,6 +5,9 @@
     document.head.appendChild(script);
 
     script.onload = function () {
+
+        let socket = null;   // ✅ TOP LEVEL DECLARATION
+
         // Configure Markdown rendering
         marked.setOptions({
             breaks: true,
@@ -253,16 +256,17 @@
         }
 
         function reconnectSocket() {
-            if (socket && socket.readyState === WebSocket.OPEN) {
+            if (typeof socket !== "undefined" && socket && socket.readyState === WebSocket.OPEN) {
                 socket.close();
             }
             document.getElementById('chat-messages').innerHTML = "";
-            connectSocket();
+            if (typeof connectSocket === "function") {
+                connectSocket();
+            }
         }
 
         let chatId = generateChatId();
         const SOCKET_URL = `${API_URL.replace('http', 'ws')}/api/ws/chat`;
-        let socket;
 
         function connectSocket() {
             if (!SECRET_KEY) {
