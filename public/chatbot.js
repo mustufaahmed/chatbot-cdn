@@ -299,11 +299,24 @@
                         hideTyping();
                         appendMessage("bot", data.message);
 
-                        // Handle End of Chat signal
+                        // Handle End of Chat signal - Reset session after thank you message
                         if (data.message.toLowerCase().includes("our agent will contact you")) {
                             setTimeout(() => {
+                                // Clear chat messages from UI
+                                const container = document.getElementById("chat-messages");
+                                if (container) {
+                                    container.innerHTML = "";
+                                }
+
+                                // Clear session storage and generate new chat ID
                                 sessionStorage.clear();
                                 chatId = generateChatId();
+
+                                // Reconnect socket with new chat ID
+                                if (socket) {
+                                    socket.close();
+                                }
+                                connectSocket();
                             }, 5000);
                         }
                     }
