@@ -54,59 +54,112 @@
         const API_URL = getBackendUrl();
         const DOMAIN = window.location.origin;
 
-        // Define styles
-        const css = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');#chatbot-float-btn{position:fixed;bottom:24px;right:24px;width:56px;height:56px;background-color:#1a1aff;color:white;border:none;border-radius:50%;font-size:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,0.3);cursor:pointer;z-index:2147483647;transition:transform 0.2s;}#chatbot-float-btn:hover{transform:scale(1.05);}#chatbot-popup{font-family:'Inter',sans-serif;position:fixed;bottom:90px;right:24px;width:360px;max-width:90%;background-color:#fff;border-radius:18px;box-shadow:0 12px 36px rgba(0,0,0,0.2);overflow:hidden;z-index:2147483647;display:none;animation:slideUp 0.3s ease;}@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}.chat-header{background-color:#1a1aff;color:white;padding:20px;font-size:18px;font-weight:600;border-top-left-radius:18px;border-top-right-radius:18px;}.chat-header span{display:block;font-size:14px;font-weight:400;margin-top:4px;}.chat-body{padding:12px 16px;min-height:240px;max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;background:#fff;}.chat-message-bubble{background:#eef0ff;padding:10px 14px;border-radius:12px;max-width:75%;word-wrap:break-word;margin:10px 0;text-align:left;font-size:15px;color:#333;line-height:1.5;}.chat-message-user{background:#1a1aff;color:white;align-self:flex-end;margin-left:auto;font-size:15px;text-align:left;}.chat-message-bubble p{margin:6px 0;}.chat-message-bubble code{background:#f2f2f2;padding:2px 4px;border-radius:4px;font-family:monospace;}.typing-indicator{display:flex;align-items:center;gap:6px;padding:15px 10px;border-radius:12px;background:#eef0ff;max-width:20%;}.typing-dot{width:8px;height:8px;background:#999;border-radius:50%;animation:typing-bounce 1.2s infinite;opacity:0.6;}.typing-dot:nth-child(2){animation-delay:0.15s;}.typing-dot:nth-child(3){animation-delay:0.3s;}@keyframes typing-bounce{0%{transform:translateY(0);opacity:0.6;}30%{transform:translateY(-6px);opacity:1;}60%,100%{transform:translateY(0);opacity:0.6;}}.chat-input-box{display:flex;border-top:1px solid #eee;padding:8px;gap:8px;background:#fff;}.chat-input-box input{flex:1;padding:10px;font-size:14px;border:1px solid #ccc;border-radius:8px;outline:none;}.chat-input-box button{background:#1a1aff;color:white;border:none;border-radius:8px;padding:10px 14px;cursor:pointer;}.chat-powered{text-align:center;font-size:10px;color:#666;padding:6px 8px;background:#fafafa;}`;
-        
-        const styleTag = document.createElement("style");
-        styleTag.innerHTML = css;
+        let widgetConfig = null;
+        let widgetColor = '#4b7bec'; // Default color
+        let floatBtn = null;
+        let popup = null;
 
-        const floatBtn = document.createElement("button");
-        floatBtn.id = "chatbot-float-btn";
-        floatBtn.innerHTML = "💬";
+        // 🔥 CRITICAL: Fetch config FIRST before creating any elements
+        async function fetchWidgetConfigSync() {
+            try {
+                const response = await fetch(`${API_URL}/api/widget-customize/public/${encodeURIComponent(WEBSITE)}`);
+                const data = await response.json();
+                if (data.success && data.data) {
+                    widgetConfig = data.data;
+                    // Set color immediately if config has it
+                    if (widgetConfig.widget_header_color) {
+                        widgetColor = widgetConfig.widget_header_color;
+                    }
+                    return true;
+                }
+            } catch (error) {
+                console.error("❌ Widget config error:", error);
+            }
+            return false;
+        }
 
-        const popup = document.createElement("div");
-        popup.id = "chatbot-popup";
-        popup.innerHTML = `
-            <div class="chat-header">
-                👋 Hi there
-                <span>Welcome to our website. Ask us anything 🎉</span>
-            </div>
-            <div class="chat-body">
-                <div id="chat-messages"></div>
-            </div>
-            <div class="chat-input-box">
-                <input type="text" id="user-message" placeholder="Type your message..." />
-                <button id="send-btn">Send</button>
-            </div>
-            <div class="chat-powered">Powered by Dotzerotech.com</div>
-        `;
+        // Create styles with dynamic color
+        function createStyles(color) {
+            return `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');#chatbot-float-btn{position:fixed;bottom:24px;right:24px;width:56px;height:56px;background-color:${color};color:white;border:none;border-radius:50%;font-size:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,0.3);cursor:pointer;z-index:2147483647;transition:transform 0.2s,background-color 0.3s;}#chatbot-float-btn:hover{transform:scale(1.05);}#chatbot-popup{font-family:'Inter',sans-serif;position:fixed;bottom:90px;right:24px;width:360px;max-width:90%;background-color:#fff;border-radius:18px;box-shadow:0 12px 36px rgba(0,0,0,0.2);overflow:hidden;z-index:2147483647;display:none;animation:slideUp 0.3s ease;}@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}.chat-header{background-color:${color};color:white;padding:20px;font-size:18px;font-weight:600;border-top-left-radius:18px;border-top-right-radius:18px;transition:background-color 0.3s;}.chat-header span{display:block;font-size:14px;font-weight:400;margin-top:4px;}.chat-body{padding:12px 16px;min-height:240px;max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;background:#fff;}.chat-message-bubble{background:#eef0ff;padding:10px 14px;border-radius:12px;max-width:75%;word-wrap:break-word;margin:10px 0;text-align:left;font-size:15px;color:#333;line-height:1.5;}.chat-message-user{background:${color};color:white;align-self:flex-end;margin-left:auto;font-size:15px;text-align:left;transition:background-color 0.3s;}.chat-message-bubble p{margin:6px 0;}.chat-message-bubble code{background:#f2f2f2;padding:2px 4px;border-radius:4px;font-family:monospace;}.typing-indicator{display:flex;align-items:center;gap:6px;padding:15px 10px;border-radius:12px;background:#eef0ff;max-width:20%;}.typing-dot{width:8px;height:8px;background:#999;border-radius:50%;animation:typing-bounce 1.2s infinite;opacity:0.6;}.typing-dot:nth-child(2){animation-delay:0.15s;}.typing-dot:nth-child(3){animation-delay:0.3s;}@keyframes typing-bounce{0%{transform:translateY(0);opacity:0.6;}30%{transform:translateY(-6px);opacity:1;}60%,100%{transform:translateY(0);opacity:0.6;}}.chat-input-box{display:flex;border-top:1px solid #eee;padding:8px;gap:8px;background:#fff;}.chat-input-box input{flex:1;padding:10px;font-size:14px;border:1px solid #ccc;border-radius:8px;outline:none;}.chat-input-box button{background:${color};color:white;border:none;border-radius:8px;padding:10px 14px;cursor:pointer;transition:background-color 0.3s;}.chat-powered{text-align:center;font-size:10px;color:#666;padding:6px 8px;background:#fafafa;}`;
+        }
 
         function injectWidget() {
             // Safety check: if already exists, stop
             if (document.getElementById('chatbot-float-btn')) return;
-            if (!document.body) return; // Should not happen due to wait logic, but safe check
+            if (!document.body) return;
 
+            // Create styles with fetched color
+            const styleTag = document.createElement("style");
+            styleTag.innerHTML = createStyles(widgetColor);
             document.head.appendChild(styleTag);
+
+            // Create button with correct color
+            floatBtn = document.createElement("button");
+            floatBtn.id = "chatbot-float-btn";
+            floatBtn.innerHTML = "💬";
+            floatBtn.style.backgroundColor = widgetColor; // Inline style for immediate application
+
+            popup = document.createElement("div");
+            popup.id = "chatbot-popup";
+            popup.innerHTML = `
+                <div class="chat-header">
+                    👋 Hi there
+                    <span>Welcome to our website. Ask us anything 🎉</span>
+                </div>
+                <div class="chat-body">
+                    <div id="chat-messages"></div>
+                </div>
+                <div class="chat-input-box">
+                    <input type="text" id="user-message" placeholder="Type your message..." />
+                    <button id="send-btn">Send</button>
+                </div>
+                <div class="chat-powered">Powered by Dotzerotech.com</div>
+            `;
+
             document.body.appendChild(floatBtn);
             document.body.appendChild(popup);
 
-            // Fetch Config NOW that elements are in DOM
-            fetchWidgetConfig();
+            // Apply config if fetched
+            if (widgetConfig) {
+                applyWidgetConfig();
+            }
             
             // Initialize Event Listeners
             initEventListeners();
         }
 
-        // THE FIX: Polling to wait for Body to be ready
-        const waitForBodyInterval = setInterval(() => {
-            if (document.body) {
-                clearInterval(waitForBodyInterval);
-                injectWidget();
-            }
-        }, 50); 
+        //Fetch config FIRST, then inject widget
+        async function initializeWidget() {
+            // Wait for body to be ready
+            const waitForBody = () => {
+                return new Promise((resolve) => {
+                    if (document.body) {
+                        resolve();
+                    } else {
+                        const interval = setInterval(() => {
+                            if (document.body) {
+                                clearInterval(interval);
+                                resolve();
+                            }
+                        }, 50);
+                    }
+                });
+            };
 
+            await waitForBody();
+            
+            // Fetch config with timeout (max 2 seconds wait)
+            const configPromise = fetchWidgetConfigSync();
+            const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(false), 2000));
+            await Promise.race([configPromise, timeoutPromise]);
+            
+            // Now inject widget with correct color
+            injectWidget();
+        }
 
-        let widgetConfig = null;
+        // Start initialization
+        initializeWidget(); 
+
         let socket;
         let chatId = generateChatId();
         const SOCKET_URL = `${API_URL.replace('http', 'ws')}/api/ws/chat`;
@@ -149,17 +202,26 @@
             return storedId;
         }
 
-        // Fetch Config
+        // Fetch Config (for re-fetching if needed, but usually config is already fetched)
         async function fetchWidgetConfig() {
-            try {
-                const response = await fetch(`${API_URL}/api/widget-customize/public/${encodeURIComponent(WEBSITE)}`);
-                const data = await response.json();
-                if (data.success && data.data) {
-                    widgetConfig = data.data;
-                    applyWidgetConfig();
+            // Config already fetched in initializeWidget, just apply it
+            if (widgetConfig) {
+                applyWidgetConfig();
+            } else {
+                // Fallback: fetch again if somehow config wasn't fetched
+                try {
+                    const response = await fetch(`${API_URL}/api/widget-customize/public/${encodeURIComponent(WEBSITE)}`);
+                    const data = await response.json();
+                    if (data.success && data.data) {
+                        widgetConfig = data.data;
+                        if (widgetConfig.widget_header_color) {
+                            widgetColor = widgetConfig.widget_header_color;
+                        }
+                        applyWidgetConfig();
+                    }
+                } catch (error) {
+                    console.error("❌ Widget config error:", error);
                 }
-            } catch (error) {
-                console.error("❌ Widget config error:", error);
             }
         }
 
