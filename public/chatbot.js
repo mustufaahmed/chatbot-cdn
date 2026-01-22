@@ -319,7 +319,7 @@
                                     socket.close();
                                 }
                                 connectSocket();
-                            }, 5000);
+                            }, 2000);
                         }
                     }
                 } catch (err) { console.warn(err); }
