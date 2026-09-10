@@ -181,6 +181,14 @@
 .chat-header-btn:hover{background:rgba(255,255,255,0.28);}
 .chat-header-btn:active{transform:scale(.95);}
 .chat-header-btn svg{width:18px;height:18px;}
+.chat-header-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+#speaker-btn.cb-muted{background:rgba(255,255,255,0.08);opacity:.65;}
+#speaker-btn.cb-speaking{background:rgba(255,255,255,0.32);animation:cbSpeakPulse 1.4s ease-in-out infinite;}
+@keyframes cbSpeakPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.45);}50%{box-shadow:0 0 0 5px rgba(255,255,255,0);}}
+.chat-message-bubble .cb-w{border-radius:4px;padding:1px 1px;margin:0 -1px;transition:background-color .12s ease,color .12s ease;}
+.chat-message-bubble .cb-w.cb-said{background:${color}1f;}
+.chat-message-bubble .cb-w.cb-reading{background:${color};color:#fff;}
+.chat-message-bubble .cb-w.cb-reading *{color:#fff !important;}
 .chat-header-avatar{
     width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.2);
     display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -327,9 +335,12 @@
                             <div class="chat-header-status"><span class="status-dot"></span> Online</div>
                         </div>
                     </div>
-                    <button id="minimize-btn" class="chat-header-btn" type="button" aria-label="Minimize chat">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    </button>
+                    <div class="chat-header-actions">
+                        <button id="speaker-btn" class="chat-header-btn" type="button" aria-label="Read replies aloud" title="Read replies aloud"></button>
+                        <button id="minimize-btn" class="chat-header-btn" type="button" aria-label="Minimize chat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="chat-body">
                     <div id="chat-messages"></div>
@@ -588,7 +599,8 @@
                     // Handle Message
                     if (data.type === "chat" && data.message) {
                         hideTyping();
-                        appendMessage("bot", data.message);
+                        const botBubble = appendMessage("bot", data.message);
+                        speak(data.message, botBubble);
                         return;
                     }
 
@@ -632,6 +644,15 @@
 
             floatBtn.addEventListener("click", () => toggleChat());
 
+            renderSpeakerBtn();
+            const speakerBtn = document.getElementById("speaker-btn");
+            if (speakerBtn) {
+                speakerBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    toggleSpeaker();
+                });
+            }
+
             const minimizeBtn = document.getElementById("minimize-btn");
             if (minimizeBtn) {
                 minimizeBtn.addEventListener("click", (e) => {
@@ -665,6 +686,8 @@
                 if (!socket || socket.readyState !== 1) connectSocket();
                 fetchChatHistory();
                 autoScroll();
+            } else {
+                stopSpeaking();
             }
         }
 
@@ -708,6 +731,325 @@
                 .catch(err => console.error(err));
         }
 
+        /* ------------------------------------------------------------------
+         * Text-to-speech (Web Speech API - free, built into every browser).
+         * When the speaker is ON, each NEW assistant reply is read aloud.
+         * History replays and system notices are never spoken.
+         * ---------------------------------------------------------------- */
+        const SPEECH_SUPPORTED =
+            typeof window !== "undefined" &&
+            "speechSynthesis" in window &&
+            typeof window.SpeechSynthesisUtterance === "function";
+
+        const SPEAK_STORAGE_KEY = "chatbot_speak_enabled";
+
+        const SPEAKER_ON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M18.36 5.64a9 9 0 0 1 0 12.73"/></svg>';
+        const SPEAKER_OFF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+
+        // Default is OFF so a visitor is never surprised by sound.
+        // A site can start it ON with window.$chatbot_widget.autoSpeak = true
+        function readStoredSpeak() {
+            try {
+                const stored = localStorage.getItem(SPEAK_STORAGE_KEY);
+                if (stored === "1") return true;
+                if (stored === "0") return false;
+            } catch (e) { /* storage blocked - fall through */ }
+            return !!(window.$chatbot_widget && window.$chatbot_widget.autoSpeak === true);
+        }
+
+        let speakEnabled = SPEECH_SUPPORTED ? readStoredSpeak() : false;
+        let voicesCache = [];
+
+        function loadVoices() {
+            if (!SPEECH_SUPPORTED) return;
+            voicesCache = window.speechSynthesis.getVoices() || [];
+        }
+
+        if (SPEECH_SUPPORTED) {
+            loadVoices();                                   // voices load asynchronously
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        function pickVoice() {
+            if (!voicesCache.length) loadVoices();
+            if (!voicesCache.length) return null;
+            const wanted = (window.$chatbot_widget && window.$chatbot_widget.voiceName) || "";
+            if (wanted) {
+                const exact = voicesCache.find(v => v.name === wanted);
+                if (exact) return exact;
+            }
+            const lang = navigator.language || "en-US";
+            const base = lang.split("-")[0];
+            return voicesCache.find(v => v.lang === lang && v.localService)
+                || voicesCache.find(v => v.lang === lang)
+                || voicesCache.find(v => v.lang && v.lang.indexOf(base) === 0)
+                || voicesCache[0]
+                || null;
+        }
+
+        // Strip markdown/HTML so the voice does not read "asterisk asterisk".
+        function toSpeakableText(markdown) {
+            if (!markdown) return "";
+            let t = String(markdown);
+            t = t.replace(/```[\s\S]*?```/g, " ");     // fenced code blocks
+            t = t.replace(/`([^`]*)`/g, "$1");           // inline code
+            t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, " ");        // images
+            t = t.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");      // links -> label only
+            t = t.replace(/^\s{0,3}#{1,6}\s+/gm, "");          // headings
+            t = t.replace(/^\s{0,3}>\s?/gm, "");               // blockquotes
+            t = t.replace(/^\s*[-*+]\s+/gm, "");               // bullets
+            t = t.replace(/(\*\*|__|\*|_|~~)/g, "");            // emphasis marks
+            t = t.replace(/<[^>]+>/g, " ");                   // any raw html
+            t = t.replace(/https?:\/\/\S+/g, " ");             // bare urls
+            t = t.replace(/&nbsp;/gi, " ");
+            try { t = t.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, " "); } catch (e) {}
+            return t.replace(/\s+/g, " ").trim();
+        }
+
+        function markSpeaking(on) {
+            const btn = document.getElementById("speaker-btn");
+            if (btn) btn.classList.toggle("cb-speaking", !!on);
+        }
+
+        function stopSpeaking() {
+            if (!SPEECH_SUPPORTED) return;
+            try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+            clearHighlight();
+            markSpeaking(false);
+        }
+
+        // Split into speakable chunks without ever losing a character.
+        // split() with a capturing group keeps the terminators, so
+        // re-joining the parts reproduces the input exactly.
+        function chunkForSpeech(text, max) {
+            const parts = text.split(/([.!?]+)/);
+            const sentences = [];
+            for (let i = 0; i < parts.length; i += 2) {
+                const sentence = (parts[i] || "") + (parts[i + 1] || "");
+                if (sentence.trim()) sentences.push(sentence.trim());
+            }
+            if (!sentences.length) return [text];
+
+            const out = [];
+            let buf = "";
+            sentences.forEach((sentence) => {
+                let rest = sentence;
+                while (rest.length > max) {          // a single over-long sentence
+                    let cut = rest.lastIndexOf(" ", max);
+                    if (cut <= 0) cut = max;         // no space to break on
+                    if (buf) { out.push(buf); buf = ""; }
+                    out.push(rest.slice(0, cut).trim());
+                    rest = rest.slice(cut).trim();
+                }
+                if (!rest) return;
+                const merged = buf ? buf + " " + rest : rest;
+                if (merged.length <= max) { buf = merged; }
+                else { if (buf) out.push(buf); buf = rest; }
+            });
+            if (buf) out.push(buf);
+            return out.filter(function (c) { return c && c.trim(); });
+        }
+
+        /* ---- word highlighting while speaking -------------------------
+         * The words that get spoken are read back OUT OF THE RENDERED
+         * BUBBLE, not out of the markdown. That guarantees every spoken
+         * word has exactly one element on screen to highlight.
+         * -------------------------------------------------------------- */
+        let currentWordEl = null;
+        let highlightedEls = [];
+
+        function isSpeakableWord(w) {
+            let t = w;
+            try { t = t.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, ""); } catch (e) {}
+            t = t.trim();
+            if (!t) return "";
+            if (/^(https?:\/\/|www\.)/i.test(t)) return "";   // do not read out URLs
+            return t;
+        }
+
+        // Wrap each visible word of a bubble in its own span.
+        // Returns [{el, text}] in reading order. Code blocks are skipped.
+        function wrapWords(bubble) {
+            const textNodes = [];
+            const walker = document.createTreeWalker(bubble, NodeFilter.SHOW_TEXT, {
+                acceptNode: function (node) {
+                    if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+                    let p = node.parentElement;
+                    while (p && p !== bubble) {
+                        const tag = p.tagName;
+                        if (tag === "CODE" || tag === "PRE" || tag === "SCRIPT" || tag === "STYLE") {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        if (p.classList && p.classList.contains("cb-w")) return NodeFilter.FILTER_REJECT;
+                        p = p.parentElement;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            let node;
+            while ((node = walker.nextNode())) textNodes.push(node);
+
+            const words = [];
+            textNodes.forEach((tn) => {
+                const frag = document.createDocumentFragment();
+                tn.nodeValue.split(/(\s+)/).forEach((part) => {
+                    if (!part) return;
+                    if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+                    const span = document.createElement("span");
+                    span.className = "cb-w";
+                    span.textContent = part;
+                    frag.appendChild(span);
+                    const clean = isSpeakableWord(part);
+                    if (clean) words.push({ el: span, text: clean });
+                });
+                if (tn.parentNode) tn.parentNode.replaceChild(frag, tn);
+            });
+            return words;
+        }
+
+        // Pack words into utterance-sized chunks, remembering where each
+        // word starts and ends inside its chunk so onboundary can find it.
+        function chunkWords(words, max) {
+            const chunks = [];
+            let cur = { text: "", marks: [] };
+            words.forEach((w) => {
+                const gap = cur.text ? 1 : 0;
+                if (cur.text && cur.text.length + gap + w.text.length > max) {
+                    chunks.push(cur);
+                    cur = { text: "", marks: [] };
+                }
+                const start = cur.text.length + (cur.text ? 1 : 0);
+                cur.text += (cur.text ? " " : "") + w.text;
+                cur.marks.push({ start: start, end: start + w.text.length, el: w.el });
+                // prefer to break after a sentence so the voice sounds natural
+                if (/[.!?]["')\]]?$/.test(w.text) && cur.text.length > max / 2) {
+                    chunks.push(cur);
+                    cur = { text: "", marks: [] };
+                }
+            });
+            if (cur.text) chunks.push(cur);
+            return chunks;
+        }
+
+        // Keep the word being read visible without scrolling the host page.
+        function keepWordInView(el) {
+            const body = document.querySelector(".chat-body");
+            if (!body) return;
+            const b = body.getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            if (r.bottom > b.bottom - 8) body.scrollTop += r.bottom - b.bottom + 8;
+            else if (r.top < b.top + 8) body.scrollTop -= b.top + 8 - r.top;
+        }
+
+        function highlightAt(marks, charIndex) {
+            let hit = null;
+            for (let i = 0; i < marks.length; i++) {
+                if (charIndex < marks[i].end) { hit = marks[i]; break; }
+            }
+            if (!hit || hit.el === currentWordEl) return;
+            if (currentWordEl) {
+                currentWordEl.classList.remove("cb-reading");
+                currentWordEl.classList.add("cb-said");
+            }
+            hit.el.classList.add("cb-reading");
+            if (highlightedEls.indexOf(hit.el) === -1) highlightedEls.push(hit.el);
+            currentWordEl = hit.el;
+            keepWordInView(hit.el);
+        }
+
+        function clearHighlight() {
+            highlightedEls.forEach((el) => el.classList.remove("cb-reading", "cb-said"));
+            highlightedEls = [];
+            currentWordEl = null;
+            const stragglers = document.querySelectorAll("#chatbot-popup .cb-w.cb-reading, #chatbot-popup .cb-w.cb-said");
+            Array.prototype.forEach.call(stragglers, (el) => el.classList.remove("cb-reading", "cb-said"));
+        }
+
+        function speak(text, bubble) {
+            if (!SPEECH_SUPPORTED || !speakEnabled) return;
+
+            stopSpeaking();   // never let two replies overlap
+
+            // Preferred path: take the words straight off the rendered bubble
+            // so each spoken word maps to one element we can highlight.
+            let chunks = [];
+            if (bubble) {
+                try {
+                    const words = wrapWords(bubble);
+                    if (words.length) chunks = chunkWords(words, 180);
+                } catch (e) { chunks = []; }
+            }
+            // Fallback (no bubble, or wrapping failed): speak without highlighting.
+            if (!chunks.length) {
+                const clean = toSpeakableText(text);
+                if (!clean) return;
+                chunks = chunkForSpeech(clean, 180).map((t) => ({ text: t, marks: [] }));
+            }
+
+            const voice = pickVoice();
+            const rate = Number(window.$chatbot_widget && window.$chatbot_widget.speechRate) || 1;
+            let sawBoundary = false;   // Firefox/older Safari may never fire onboundary
+
+            chunks.forEach((chunk, i) => {
+                const part = chunk.text.trim();
+                if (!part) return;
+                const marks = chunk.marks;
+                const u = new SpeechSynthesisUtterance(part);
+                if (voice) { u.voice = voice; u.lang = voice.lang; }
+                u.rate = rate;
+                u.pitch = 1;
+
+                let fallbackTimer = null;
+                u.onstart = () => {
+                    markSpeaking(true);
+                    if (!marks.length) return;
+                    // If no word boundaries arrive, light up the whole chunk
+                    // so the reader still sees where the voice is.
+                    fallbackTimer = setTimeout(() => {
+                        if (sawBoundary) return;
+                        marks.forEach((m) => {
+                            m.el.classList.add("cb-reading");
+                            if (highlightedEls.indexOf(m.el) === -1) highlightedEls.push(m.el);
+                        });
+                        keepWordInView(marks[marks.length - 1].el);
+                    }, 700);
+                };
+                u.onboundary = (e) => {
+                    if (e.name && e.name !== "word") return;
+                    if (!marks.length) return;
+                    sawBoundary = true;
+                    if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
+                    highlightAt(marks, e.charIndex);
+                };
+                u.onend = () => {
+                    if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
+                    if (i === chunks.length - 1) clearHighlight();
+                    if (!window.speechSynthesis.pending && !window.speechSynthesis.speaking) markSpeaking(false);
+                };
+                u.onerror = () => { clearHighlight(); markSpeaking(false); };
+                window.speechSynthesis.speak(u);
+            });
+        }
+
+        function renderSpeakerBtn() {
+            const btn = document.getElementById("speaker-btn");
+            if (!btn) return;
+            if (!SPEECH_SUPPORTED) { btn.style.display = "none"; return; }
+            btn.innerHTML = speakEnabled ? SPEAKER_ON_ICON : SPEAKER_OFF_ICON;
+            btn.classList.toggle("cb-muted", !speakEnabled);
+            const label = speakEnabled ? "Mute replies" : "Read replies aloud";
+            btn.setAttribute("aria-label", label);
+            btn.setAttribute("title", label);
+            btn.setAttribute("aria-pressed", speakEnabled ? "true" : "false");
+        }
+
+        function toggleSpeaker() {
+            speakEnabled = !speakEnabled;
+            try { localStorage.setItem(SPEAK_STORAGE_KEY, speakEnabled ? "1" : "0"); } catch (e) { /* ignore */ }
+            if (!speakEnabled) stopSpeaking();
+            renderSpeakerBtn();
+        }
+
         function appendMessage(role, text, shouldScroll = true) {
             const container = document.getElementById("chat-messages");
             if (!container) return;
@@ -730,6 +1072,7 @@
             row.appendChild(bubble);
             container.appendChild(row);
             if (shouldScroll) autoScroll();
+            return bubble;
         }
 
         function showTyping() {
